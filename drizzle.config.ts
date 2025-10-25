@@ -1,8 +1,5 @@
 import { defineConfig } from "drizzle-kit";
-import { config } from "dotenv";
-
-// Load environment variables from .env.local
-config({ path: ".env.local" });
+import { env } from "./src/env/server";
 
 export default defineConfig({
 	// Schema location
@@ -16,8 +13,8 @@ export default defineConfig({
 
 	// Database credentials
 	dbCredentials: {
-		url: process.env.TURSO_CONNECTION_URL!,
-		authToken: process.env.TURSO_AUTH_TOKEN!,
+		url: env.TURSO_CONNECTION_URL,
+		authToken: env.TURSO_AUTH_TOKEN,
 	},
 
 	// Verbose logging
