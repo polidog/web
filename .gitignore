@@ -42,3 +42,8 @@ next-env.d.ts
 
 # drizzle
 .drizzle
+
+# local SQLite database
+local.db
+local.db-shm
+local.db-wal

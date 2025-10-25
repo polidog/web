@@ -7,8 +7,8 @@ const jiti = createJiti(fileURLToPath(import.meta.url));
 jiti("./src/env/server.ts");
 
 const nextConfig: NextConfig = {
-	/* config options here */
-	reactCompiler: true,
+  /* config options here */
+  reactCompiler: true,
 };
 
 export default nextConfig;
