@@ -17,6 +17,17 @@ export const env = createEnv({
     // For production: uses Turso cloud database
     TURSO_CONNECTION_URL: z.string().url().optional(),
     TURSO_AUTH_TOKEN: z.string().min(1).optional(),
+
+    // BetterAuth Configuration
+    BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    BETTER_AUTH_URL: z.string().url().optional(),
+
+    // Google OAuth Configuration
+    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+
+    // Allowed emails for registration (comma-separated)
+    ALLOWED_EMAILS: z.string().min(1).optional(),
   },
   // For Next.js >= 13.4.4, you only need to destructure client variables:
   experimental__runtimeEnv: process.env,
