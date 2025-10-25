@@ -4,8 +4,8 @@
  */
 
 import { db } from "@/db";
-import { users, type NewUser } from "@/db/schema";
-import { eq, and, or, like, gt, lt, sql } from "drizzle-orm";
+import { posts, type NewPost } from "@/db/schema";
+import { eq, and, or, like, gt, lt, sql, desc } from "drizzle-orm";
 
 /**
  * 基本的なCRUD操作
@@ -14,120 +14,139 @@ import { eq, and, or, like, gt, lt, sql } from "drizzle-orm";
 // ==================== CREATE ====================
 
 // 単一レコード挿入
-async function createUser() {
-  const [newUser] = await db
-    .insert(users)
+async function createPost() {
+  const [newPost] = await db
+    .insert(posts)
     .values({
-      name: "John Doe",
-      email: "john@example.com",
+      title: "Sample Post",
+      slug: "sample-post",
+      content: "This is a sample post content",
+      status: "draft",
+      authorId: "user-id-here",
     })
     .returning();
 
-  return newUser;
+  return newPost;
 }
 
 // 複数レコード挿入
-async function createMultipleUsers() {
-  const newUsers = await db
-    .insert(users)
+async function createMultiplePosts() {
+  const newPosts = await db
+    .insert(posts)
     .values([
-      { name: "Alice", email: "alice@example.com" },
-      { name: "Bob", email: "bob@example.com" },
+      {
+        title: "First Post",
+        slug: "first-post",
+        content: "Content 1",
+        status: "published",
+        authorId: "user-id-here",
+      },
+      {
+        title: "Second Post",
+        slug: "second-post",
+        content: "Content 2",
+        status: "draft",
+        authorId: "user-id-here",
+      },
     ])
     .returning();
 
-  return newUsers;
+  return newPosts;
 }
 
 // ==================== READ ====================
 
 // 全件取得
-async function getAllUsers() {
-  const allUsers = await db.select().from(users);
-  return allUsers;
+async function getAllPosts() {
+  const allPosts = await db.select().from(posts);
+  return allPosts;
 }
 
 // 条件付き取得
-async function getUserById(id: number) {
-  const [user] = await db.select().from(users).where(eq(users.id, id));
-  return user;
+async function getPostById(id: number) {
+  const [foundPost] = await db.select().from(posts).where(eq(posts.id, id));
+  return foundPost;
 }
 
-// メールアドレスで検索
-async function getUserByEmail(email: string) {
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  return user;
+// スラッグで検索
+async function getPostBySlug(slug: string) {
+  const [foundPost] = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.slug, slug));
+  return foundPost;
 }
 
 // 複数条件 (AND)
-async function getUserByNameAndEmail(name: string, email: string) {
-  const [user] = await db
+async function getPostByTitleAndStatus(title: string, status: "draft" | "published") {
+  const [post] = await db
     .select()
-    .from(users)
-    .where(and(eq(users.name, name), eq(users.email, email)));
-  return user;
+    .from(posts)
+    .where(and(eq(posts.title, title), eq(posts.status, status)));
+  return post;
 }
 
 // 複数条件 (OR)
-async function getUserByNameOrEmail(name: string, email: string) {
+async function getPostsByAuthorOrStatus(authorId: string, status: "draft" | "published") {
   const results = await db
     .select()
-    .from(users)
-    .where(or(eq(users.name, name), eq(users.email, email)));
+    .from(posts)
+    .where(or(eq(posts.authorId, authorId), eq(posts.status, status)));
   return results;
 }
 
 // LIKE検索
-async function searchUsersByName(searchTerm: string) {
+async function searchPostsByTitle(searchTerm: string) {
   const results = await db
     .select()
-    .from(users)
-    .where(like(users.name, `%${searchTerm}%`));
+    .from(posts)
+    .where(like(posts.title, `%${searchTerm}%`));
   return results;
 }
 
 // ページネーション
-async function getUsersPaginated(page = 1, pageSize = 10) {
+async function getPostsPaginated(page = 1, pageSize = 10) {
   const offset = (page - 1) * pageSize;
-  const results = await db.select().from(users).limit(pageSize).offset(offset);
+  const results = await db.select().from(posts).limit(pageSize).offset(offset);
   return results;
 }
 
 // 並び替え
-async function getUsersSorted() {
-  const results = await db.select().from(users).orderBy(users.createdAt); // desc(users.createdAt) で降順
+async function getPostsSorted() {
+  const results = await db.select().from(posts).orderBy(desc(posts.createdAt));
   return results;
 }
 
 // 特定カラムのみ取得
-async function getUserNamesOnly() {
+async function getPostTitlesOnly() {
   const results = await db
     .select({
-      id: users.id,
-      name: users.name,
+      id: posts.id,
+      title: posts.title,
+      slug: posts.slug,
     })
-    .from(users);
+    .from(posts);
   return results;
 }
 
 // ==================== UPDATE ====================
 
 // 単一レコード更新
-async function updateUser(id: number, name: string) {
+async function updatePost(id: number, title: string) {
   const [updated] = await db
-    .update(users)
-    .set({ name })
-    .where(eq(users.id, id))
+    .update(posts)
+    .set({ title })
+    .where(eq(posts.id, id))
     .returning();
   return updated;
 }
 
 // 複数カラム更新
-async function updateUserFull(id: number, data: Partial<NewUser>) {
+async function updatePostFull(id: number, data: Partial<NewPost>) {
   const [updated] = await db
-    .update(users)
+    .update(posts)
     .set(data)
-    .where(eq(users.id, id))
+    .where(eq(posts.id, id))
     .returning();
   return updated;
 }
@@ -135,34 +154,40 @@ async function updateUserFull(id: number, data: Partial<NewUser>) {
 // ==================== DELETE ====================
 
 // 単一レコード削除
-async function deleteUser(id: number) {
-  await db.delete(users).where(eq(users.id, id));
+async function deletePost(id: number) {
+  await db.delete(posts).where(eq(posts.id, id));
 }
 
 // 条件付き削除
-async function deleteUsersByEmail(email: string) {
-  await db.delete(users).where(eq(users.email, email));
+async function deletePostsByAuthor(authorId: string) {
+  await db.delete(posts).where(eq(posts.authorId, authorId));
 }
 
 // ==================== ADVANCED ====================
 
 // カウント
-async function countUsers() {
-  const [{ count }] = await db.select({ count: db.$count(users) }).from(users);
+async function countPosts() {
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(posts);
   return count;
 }
 
 // トランザクション
-async function createUserWithTransaction() {
+async function createPostWithTransaction() {
   await db.transaction(async (tx) => {
     // トランザクション内で複数の操作
-    const [user] = await tx
-      .insert(users)
-      .values({ name: "Test", email: "test@example.com" })
+    const [post] = await tx
+      .insert(posts)
+      .values({
+        title: "Test Post",
+        slug: "test-post",
+        content: "Test content",
+        status: "draft",
+        authorId: "user-id-here",
+      })
       .returning();
 
     // 何か条件に応じてロールバック
-    if (!user) {
+    if (!post) {
       tx.rollback();
     }
   });
@@ -172,7 +197,7 @@ async function createUserWithTransaction() {
 async function rawSqlQuery() {
   // 型安全性が失われるため、通常は避けるべき
   const result = await db.run(
-    sql`SELECT * FROM users WHERE email = ${"test@example.com"}`,
+    sql`SELECT * FROM posts WHERE slug = ${"test-post"}`,
   );
   return result;
 }
@@ -182,16 +207,16 @@ async function rawSqlQuery() {
  */
 
 // Server Component での使用例
-export async function UsersServerComponent() {
-  const allUsers = await db.select().from(users);
+export async function PostsServerComponent() {
+  const allPosts = await db.select().from(posts);
 
   return (
     <div>
-      <h1>Users</h1>
+      <h1>Posts</h1>
       <ul>
-        {allUsers.map((user) => (
-          <li key={user.id}>
-            {user.name} ({user.email})
+        {allPosts.map((post) => (
+          <li key={post.id}>
+            {post.title} - {post.status}
           </li>
         ))}
       </ul>
@@ -200,15 +225,22 @@ export async function UsersServerComponent() {
 }
 
 // Server Action での使用例
-export async function createUserAction(formData: FormData) {
+export async function createPostAction(formData: FormData) {
   "use server";
 
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
+  const title = formData.get("title") as string;
+  const slug = formData.get("slug") as string;
+  const content = formData.get("content") as string;
+  const authorId = formData.get("authorId") as string;
 
-  const [newUser] = await db.insert(users).values({ name, email }).returning();
+  const [newPost] = await db
+    .insert(posts)
+    .values({ title, slug, content, status: "draft", authorId })
+    .returning();
 
-  return newUser;
+  return newPost;
 }
 
-// Route Handler での使用例 (既に src/app/api/users/route.ts に実装済み)
+// Route Handler での使用例
+// Note: このプロジェクトではServer Actionsを推奨しますが、
+// 外部APIとして公開する必要がある場合はRoute Handlerを使用できます

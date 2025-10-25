@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth } from "@/features/auth/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Session, User } from "better-auth";

@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut } from "@/lib/auth-client";
+import { signOut } from "@/features/auth/lib/auth-client";
 import { LogOut, User as UserIcon } from "lucide-react";
 
 interface AdminHeaderProps {

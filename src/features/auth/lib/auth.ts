@@ -33,7 +33,7 @@ export const auth = betterAuth({
             );
           }
 
-          return user;
+          return { data: user };
         },
       },
     },

@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus } from "lucide-react";
-import { DeletePostButton } from "../_components/delete-post-button";
+import { DeletePostButton } from "@/features/posts/components/delete-post-button";
 
 export default async function PostsPage() {
   const allPosts = await db.select().from(posts).orderBy(desc(posts.createdAt));

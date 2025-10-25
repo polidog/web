@@ -12,15 +12,12 @@ export default defineConfig({
   dialect: "sqlite",
 
   // Database credentials (switches based on environment)
-  dbCredentials:
-    env.NODE_ENV === "production"
-      ? {
-          url: env.TURSO_CONNECTION_URL ?? "",
-          authToken: env.TURSO_AUTH_TOKEN ?? "",
-        }
-      : {
-          url: "file:local.db",
-        },
+  dbCredentials: {
+    url:
+      env.NODE_ENV === "production"
+        ? env.TURSO_CONNECTION_URL ?? ""
+        : "file:local.db",
+  },
 
   // Verbose logging
   verbose: true,

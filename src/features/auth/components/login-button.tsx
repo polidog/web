@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "@/lib/auth-client";
+import { signIn } from "@/features/auth/lib/auth-client";
 import { useState } from "react";
 
 export function LoginButton() {
