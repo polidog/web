@@ -1,10 +1,10 @@
-import { PostForm } from "@/features/posts/components/post-form";
-import { requireAuth } from "@/features/auth/lib/auth-helpers";
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { requireAuth } from "@/features/auth/lib/auth-helpers";
+import { PostForm } from "@/features/posts/components/post-form";
 
 interface EditPostPageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +13,7 @@ interface EditPostPageProps {
 export default async function EditPostPage({ params }: EditPostPageProps) {
   const { user } = await requireAuth();
   const { id } = await params;
-  const postId = Number.parseInt(id);
+  const postId = Number.parseInt(id, 10);
 
   if (Number.isNaN(postId)) {
     notFound();

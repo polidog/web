@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/features/auth/lib/auth-helpers";
 import { LoginButton } from "@/features/auth/components/login-button";
+import { getSession } from "@/features/auth/lib/auth-helpers";
 
 export default async function LoginPage() {
   const session = await getSession();

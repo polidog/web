@@ -1,7 +1,7 @@
 "use client";
 
-import { signIn } from "@/features/auth/lib/auth-client";
 import { useState } from "react";
+import { signIn } from "@/features/auth/lib/auth-client";
 
 export function LoginButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +20,7 @@ export function LoginButton() {
       setError(
         err instanceof Error
           ? err.message
-          : "ログインに失敗しました。もう一度お試しください。"
+          : "ログインに失敗しました。もう一度お試しください。",
       );
       setIsLoading(false);
     }
@@ -29,11 +29,17 @@ export function LoginButton() {
   return (
     <div className="space-y-4">
       <button
+        type="button"
         onClick={handleGoogleSignIn}
         disabled={isLoading}
         className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
       >
-        <svg className="h-5 w-5" viewBox="0 0 24 24">
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 24 24"
+          role="img"
+          aria-label="Google logo"
+        >
           <path
             fill="currentColor"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

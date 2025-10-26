@@ -1,6 +1,6 @@
-import { PostForm } from "@/features/posts/components/post-form";
-import { requireAuth } from "@/features/auth/lib/auth-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAuth } from "@/features/auth/lib/auth-helpers";
+import { PostForm } from "@/features/posts/components/post-form";
 
 export default async function NewPostPage() {
   const { user } = await requireAuth();

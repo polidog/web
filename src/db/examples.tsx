@@ -3,9 +3,9 @@
  * このファイルは実際のコードではなく、使い方のリファレンスです
  */
 
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { posts, type NewPost } from "@/db/schema";
-import { eq, and, or, like, gt, lt, sql, desc } from "drizzle-orm";
+import { type NewPost, posts } from "@/db/schema";
 
 /**
  * 基本的なCRUD操作
@@ -14,7 +14,7 @@ import { eq, and, or, like, gt, lt, sql, desc } from "drizzle-orm";
 // ==================== CREATE ====================
 
 // 単一レコード挿入
-async function createPost() {
+async function _createPost() {
   const [newPost] = await db
     .insert(posts)
     .values({
@@ -30,7 +30,7 @@ async function createPost() {
 }
 
 // 複数レコード挿入
-async function createMultiplePosts() {
+async function _createMultiplePosts() {
   const newPosts = await db
     .insert(posts)
     .values([
@@ -57,28 +57,28 @@ async function createMultiplePosts() {
 // ==================== READ ====================
 
 // 全件取得
-async function getAllPosts() {
+async function _getAllPosts() {
   const allPosts = await db.select().from(posts);
   return allPosts;
 }
 
 // 条件付き取得
-async function getPostById(id: number) {
+async function _getPostById(id: number) {
   const [foundPost] = await db.select().from(posts).where(eq(posts.id, id));
   return foundPost;
 }
 
 // スラッグで検索
-async function getPostBySlug(slug: string) {
-  const [foundPost] = await db
-    .select()
-    .from(posts)
-    .where(eq(posts.slug, slug));
+async function _getPostBySlug(slug: string) {
+  const [foundPost] = await db.select().from(posts).where(eq(posts.slug, slug));
   return foundPost;
 }
 
 // 複数条件 (AND)
-async function getPostByTitleAndStatus(title: string, status: "draft" | "published") {
+async function _getPostByTitleAndStatus(
+  title: string,
+  status: "draft" | "published",
+) {
   const [post] = await db
     .select()
     .from(posts)
@@ -87,7 +87,10 @@ async function getPostByTitleAndStatus(title: string, status: "draft" | "publish
 }
 
 // 複数条件 (OR)
-async function getPostsByAuthorOrStatus(authorId: string, status: "draft" | "published") {
+async function _getPostsByAuthorOrStatus(
+  authorId: string,
+  status: "draft" | "published",
+) {
   const results = await db
     .select()
     .from(posts)
@@ -96,7 +99,7 @@ async function getPostsByAuthorOrStatus(authorId: string, status: "draft" | "pub
 }
 
 // LIKE検索
-async function searchPostsByTitle(searchTerm: string) {
+async function _searchPostsByTitle(searchTerm: string) {
   const results = await db
     .select()
     .from(posts)
@@ -105,20 +108,20 @@ async function searchPostsByTitle(searchTerm: string) {
 }
 
 // ページネーション
-async function getPostsPaginated(page = 1, pageSize = 10) {
+async function _getPostsPaginated(page = 1, pageSize = 10) {
   const offset = (page - 1) * pageSize;
   const results = await db.select().from(posts).limit(pageSize).offset(offset);
   return results;
 }
 
 // 並び替え
-async function getPostsSorted() {
+async function _getPostsSorted() {
   const results = await db.select().from(posts).orderBy(desc(posts.createdAt));
   return results;
 }
 
 // 特定カラムのみ取得
-async function getPostTitlesOnly() {
+async function _getPostTitlesOnly() {
   const results = await db
     .select({
       id: posts.id,
@@ -132,7 +135,7 @@ async function getPostTitlesOnly() {
 // ==================== UPDATE ====================
 
 // 単一レコード更新
-async function updatePost(id: number, title: string) {
+async function _updatePost(id: number, title: string) {
   const [updated] = await db
     .update(posts)
     .set({ title })
@@ -142,7 +145,7 @@ async function updatePost(id: number, title: string) {
 }
 
 // 複数カラム更新
-async function updatePostFull(id: number, data: Partial<NewPost>) {
+async function _updatePostFull(id: number, data: Partial<NewPost>) {
   const [updated] = await db
     .update(posts)
     .set(data)
@@ -154,25 +157,27 @@ async function updatePostFull(id: number, data: Partial<NewPost>) {
 // ==================== DELETE ====================
 
 // 単一レコード削除
-async function deletePost(id: number) {
+async function _deletePost(id: number) {
   await db.delete(posts).where(eq(posts.id, id));
 }
 
 // 条件付き削除
-async function deletePostsByAuthor(authorId: string) {
+async function _deletePostsByAuthor(authorId: string) {
   await db.delete(posts).where(eq(posts.authorId, authorId));
 }
 
 // ==================== ADVANCED ====================
 
 // カウント
-async function countPosts() {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(posts);
+async function _countPosts() {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(posts);
   return count;
 }
 
 // トランザクション
-async function createPostWithTransaction() {
+async function _createPostWithTransaction() {
   await db.transaction(async (tx) => {
     // トランザクション内で複数の操作
     const [post] = await tx
@@ -194,7 +199,7 @@ async function createPostWithTransaction() {
 }
 
 // 生SQLクエリ (必要な場合のみ使用)
-async function rawSqlQuery() {
+async function _rawSqlQuery() {
   // 型安全性が失われるため、通常は避けるべき
   const result = await db.run(
     sql`SELECT * FROM posts WHERE slug = ${"test-post"}`,

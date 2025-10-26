@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
-import { env } from "@/env/server";
 import * as schema from "@/db/schema";
+import { env } from "@/env/server";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -23,13 +23,12 @@ export const auth = betterAuth({
       create: {
         before: async (user) => {
           // Email restriction check
-          const allowedEmails = env.ALLOWED_EMAILS?.split(",").map((e) =>
-            e.trim()
-          ) ?? [];
+          const allowedEmails =
+            env.ALLOWED_EMAILS?.split(",").map((e) => e.trim()) ?? [];
 
           if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
             throw new Error(
-              "このメールアドレスは登録が許可されていません。管理者に連絡してください。"
+              "このメールアドレスは登録が許可されていません。管理者に連絡してください。",
             );
           }
 

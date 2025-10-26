@@ -1,11 +1,10 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { getCurrentUser } from "@/features/auth/lib/auth-helpers";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 /**
  * Create a new post
@@ -46,7 +45,8 @@ export async function createPost(formData: FormData) {
     console.error("Failed to create post:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "記事の作成に失敗しました",
+      error:
+        error instanceof Error ? error.message : "記事の作成に失敗しました",
     };
   }
 }
@@ -101,7 +101,8 @@ export async function updatePost(id: number, formData: FormData) {
     console.error("Failed to update post:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "記事の更新に失敗しました",
+      error:
+        error instanceof Error ? error.message : "記事の更新に失敗しました",
     };
   }
 }

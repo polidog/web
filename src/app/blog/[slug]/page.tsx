@@ -1,9 +1,9 @@
+import { and, eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import type { Metadata } from "next";
 import { MarkdownContent } from "@/features/posts/components/markdown-content";
 
 interface BlogPostPageProps {

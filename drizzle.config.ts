@@ -15,7 +15,7 @@ export default defineConfig({
   dbCredentials: {
     url:
       env.NODE_ENV === "production"
-        ? env.TURSO_CONNECTION_URL ?? ""
+        ? (env.TURSO_CONNECTION_URL ?? "")
         : "file:local.db",
   },
 

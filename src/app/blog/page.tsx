@@ -1,8 +1,8 @@
+import { desc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
-import Link from "next/link";
-import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -65,7 +65,7 @@ export default async function BlogPage() {
                               year: "numeric",
                               month: "long",
                               day: "numeric",
-                            }
+                            },
                           )
                         : "日付未設定"}
                     </time>

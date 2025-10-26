@@ -43,7 +43,9 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
             <h6 className="text-base font-bold mt-4 mb-2" {...props} />
           ),
           // 段落
-          p: ({ node, ...props }) => <p className="my-4 leading-7" {...props} />,
+          p: ({ node, ...props }) => (
+            <p className="my-4 leading-7" {...props} />
+          ),
           // リンク
           a: ({ node, ...props }) => (
             <a
@@ -116,10 +118,7 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
             />
           ),
           td: ({ node, ...props }) => (
-            <td
-              className="px-4 py-2 whitespace-nowrap text-sm"
-              {...props}
-            />
+            <td className="px-4 py-2 whitespace-nowrap text-sm" {...props} />
           ),
           // 水平線
           hr: ({ node, ...props }) => (
@@ -130,7 +129,8 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
           ),
           // 画像
           img: ({ node, ...props }) => (
-            // biome-ignore lint/a11y/useAltText: <explanation>
+            // biome-ignore lint/a11y/useAltText: Markdown content provides alt text
+            // biome-ignore lint/performance/noImgElement: Markdown rendering needs img
             <img className="my-4 rounded-lg max-w-full h-auto" {...props} />
           ),
         }}

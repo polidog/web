@@ -1,6 +1,5 @@
-import { db } from "@/db";
-import { posts } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import { db } from "@/db";
+import { posts } from "@/db/schema";
 import { DeletePostButton } from "@/features/posts/components/delete-post-button";
 
 export default async function PostsPage() {

@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
 import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createPost, updatePost } from "@/features/posts/actions/posts";
 import type { Post } from "@/db/schema";
+import { createPost, updatePost } from "@/features/posts/actions/posts";
 
 interface PostFormProps {
   authorId: string;
@@ -18,12 +18,14 @@ export function PostForm({ authorId, post }: PostFormProps) {
   const router = useRouter();
   const isEdit = !!post;
 
-  type ActionState =
-    | { success: boolean; error?: string; post?: Post };
+  type ActionState = { success: boolean; error?: string; post?: Post };
 
   // Define action based on mode
   const action = isEdit
-    ? async (_prevState: ActionState, formData: FormData): Promise<ActionState> => {
+    ? async (
+        _prevState: ActionState,
+        formData: FormData,
+      ): Promise<ActionState> => {
         const result = await updatePost(post.id, formData);
         if (result.success) {
           router.push("/admin/posts");
@@ -31,7 +33,10 @@ export function PostForm({ authorId, post }: PostFormProps) {
         }
         return result;
       }
-    : async (_prevState: ActionState, formData: FormData): Promise<ActionState> => {
+    : async (
+        _prevState: ActionState,
+        formData: FormData,
+      ): Promise<ActionState> => {
         const result = await createPost(formData);
         if (result.success) {
           router.push("/admin/posts");
@@ -42,7 +47,7 @@ export function PostForm({ authorId, post }: PostFormProps) {
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     action,
-    { success: false }
+    { success: false },
   );
 
   return (
@@ -89,9 +94,7 @@ export function PostForm({ authorId, post }: PostFormProps) {
           placeholder="記事の本文を入力..."
           className="min-h-[400px] font-mono"
         />
-        <p className="text-sm text-muted-foreground">
-          Markdownで記述できます
-        </p>
+        <p className="text-sm text-muted-foreground">Markdownで記述できます</p>
       </div>
 
       {state && !state.success && "error" in state && (

@@ -1,9 +1,9 @@
+import { desc } from "drizzle-orm";
+import { Clock, FilePlus, FileText } from "lucide-react";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, FilePlus, Clock } from "lucide-react";
-import Link from "next/link";
 
 export default async function DashboardPage() {
   // Get post statistics

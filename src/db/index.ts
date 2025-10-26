@@ -1,7 +1,7 @@
-import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
-import * as schema from "./schema";
+import { drizzle } from "drizzle-orm/libsql";
 import { env } from "@/env/server";
+import * as schema from "./schema";
 
 // Create libSQL client based on environment
 // Development: Use local SQLite file
@@ -14,7 +14,9 @@ const getClientConfig = () => {
 
     if (!url || !authToken) {
       // If building for production without credentials, use local file as fallback
-      console.warn("Production build without Turso credentials, using local database");
+      console.warn(
+        "Production build without Turso credentials, using local database",
+      );
       return { url: "file:local.db" };
     }
 

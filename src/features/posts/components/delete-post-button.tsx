@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { deletePost } from "@/features/posts/actions/posts";
-import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { deletePost } from "@/features/posts/actions/posts";
 
 interface DeletePostButtonProps {
   postId: number;
@@ -20,7 +20,7 @@ export function DeletePostButton({ postId }: DeletePostButtonProps) {
     try {
       setIsDeleting(true);
       await deletePost(postId);
-    } catch (error) {
+    } catch (_error) {
       alert("削除に失敗しました");
       setIsDeleting(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import type { User } from "better-auth";
+import { LogOut, User as UserIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/features/auth/lib/auth-client";
-import { LogOut, User as UserIcon } from "lucide-react";
 
 interface AdminHeaderProps {
   user: User;
@@ -34,6 +34,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
         <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600">
             {user.image ? (
+              // biome-ignore lint/performance/noImgElement: User avatar from OAuth provider
               <img
                 src={user.image}
                 alt={user.name}
