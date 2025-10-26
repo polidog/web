@@ -37,42 +37,53 @@ export default async function BlogPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {publishedPosts.map((post) => (
-              <article
-                key={post.id}
-                className="border-b border-gray-200 dark:border-gray-800 pb-8 last:border-b-0"
-              >
-                <Link
-                  href={`/blog/${post.slug}`}
-                  className="group block hover:opacity-80 transition-opacity"
+            {publishedPosts.map((post) => {
+              const publishedDate = post.publishedAt
+                ? new Date(post.publishedAt)
+                : new Date();
+              const year = publishedDate.getFullYear();
+              const month = String(publishedDate.getMonth() + 1).padStart(
+                2,
+                "0",
+              );
+
+              return (
+                <article
+                  key={post.id}
+                  className="border-b border-gray-200 dark:border-gray-800 pb-8 last:border-b-0"
                 >
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {post.title}
-                  </h2>
+                  <Link
+                    href={`/blog/${year}/${month}/${post.slug}`}
+                    className="group block hover:opacity-80 transition-opacity"
+                  >
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {post.title}
+                    </h2>
 
-                  {post.excerpt && (
-                    <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
-                      {post.excerpt}
-                    </p>
-                  )}
+                    {post.excerpt && (
+                      <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
+                        {post.excerpt}
+                      </p>
+                    )}
 
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-500">
-                    <time dateTime={post.publishedAt?.toISOString()}>
-                      {post.publishedAt
-                        ? new Date(post.publishedAt).toLocaleDateString(
-                            "ja-JP",
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            },
-                          )
-                        : "日付未設定"}
-                    </time>
-                  </div>
-                </Link>
-              </article>
-            ))}
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-500">
+                      <time dateTime={post.publishedAt?.toISOString()}>
+                        {post.publishedAt
+                          ? new Date(post.publishedAt).toLocaleDateString(
+                              "ja-JP",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )
+                          : "日付未設定"}
+                      </time>
+                    </div>
+                  </Link>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

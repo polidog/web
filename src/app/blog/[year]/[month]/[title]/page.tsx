@@ -7,19 +7,19 @@ import { posts } from "@/db/schema";
 import { MarkdownContent } from "@/features/posts/components/markdown-content";
 
 interface BlogPostPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ year: string; month: string; title: string }>;
 }
 
 // 動的メタデータ生成
 export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { title } = await params;
 
   const [post] = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.slug, slug), eq(posts.status, "published")));
+    .where(and(eq(posts.slug, title), eq(posts.status, "published")));
 
   if (!post) {
     return {
@@ -40,13 +40,13 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { slug } = await params;
+  const { title } = await params;
 
   // 公開済みの記事のみ取得
   const [post] = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.slug, slug), eq(posts.status, "published")));
+    .where(and(eq(posts.slug, title), eq(posts.status, "published")));
 
   if (!post) {
     notFound();
