@@ -1,7 +1,8 @@
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Table,
   TableBody,
@@ -14,8 +15,30 @@ import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { DeletePostButton } from "@/features/posts/components/delete-post-button";
 
-export default async function PostsPage() {
-  const allPosts = await db.select().from(posts).orderBy(desc(posts.createdAt));
+export default async function PostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Number(params.page) || 1;
+  const perPage = 10;
+  const offset = (page - 1) * perPage;
+
+  // Get paginated posts
+  const allPosts = await db
+    .select()
+    .from(posts)
+    .orderBy(desc(posts.createdAt))
+    .limit(perPage)
+    .offset(offset);
+
+  // Get total count for pagination
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(posts);
+
+  const totalPages = Math.ceil(count / perPage);
 
   return (
     <div className="space-y-6">
@@ -36,7 +59,7 @@ export default async function PostsPage() {
         </Link>
       </div>
 
-      {allPosts.length === 0 ? (
+      {count === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-gray-700 dark:bg-gray-800">
           <p className="text-gray-500 dark:text-gray-400">
             まだ記事がありません
@@ -49,49 +72,52 @@ export default async function PostsPage() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>タイトル</TableHead>
-                <TableHead>ステータス</TableHead>
-                <TableHead>作成日</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {allPosts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell className="font-medium">{post.title}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                        post.status === "published"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                      }`}
-                    >
-                      {post.status === "published" ? "公開" : "下書き"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(post.createdAt).toLocaleDateString("ja-JP")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link href={`/admin/posts/${post.id}/edit`}>
-                        <Button variant="outline" size="sm">
-                          編集
-                        </Button>
-                      </Link>
-                      <DeletePostButton postId={post.id} />
-                    </div>
-                  </TableCell>
+        <>
+          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>タイトル</TableHead>
+                  <TableHead>ステータス</TableHead>
+                  <TableHead>作成日</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {allPosts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium">{post.title}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                          post.status === "published"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                        }`}
+                      >
+                        {post.status === "published" ? "公開" : "下書き"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(post.createdAt).toLocaleDateString("ja-JP")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/admin/posts/${post.id}/edit`}>
+                          <Button variant="outline" size="sm">
+                            編集
+                          </Button>
+                        </Link>
+                        <DeletePostButton postId={post.id} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <Pagination currentPage={page} totalPages={totalPages} />
+        </>
       )}
     </div>
   );
