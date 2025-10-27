@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { postCategories, postTags, posts } from "@/db/schema";
 import { getCurrentUser } from "@/features/auth/lib/auth-helpers";
 
 /**
@@ -21,6 +21,15 @@ export async function createPost(formData: FormData) {
     const content = formData.get("content") as string;
     const excerpt = formData.get("excerpt") as string;
     const status = (formData.get("status") as "draft" | "published") || "draft";
+    const publishedAtInput = formData.get("publishedAt") as string;
+    const categoryIds = formData
+      .getAll("categoryIds")
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id));
+    const tagIds = formData
+      .getAll("tagIds")
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id));
 
     if (!title || !slug || !content) {
       return { success: false, error: "必須項目を入力してください" };
@@ -35,9 +44,34 @@ export async function createPost(formData: FormData) {
         excerpt: excerpt || null,
         status,
         authorId: user.id,
-        publishedAt: status === "published" ? new Date() : null,
+        publishedAt:
+          status === "published"
+            ? publishedAtInput
+              ? new Date(publishedAtInput)
+              : new Date()
+            : null,
       })
       .returning();
+
+    // Insert category relations
+    if (categoryIds.length > 0) {
+      await db.insert(postCategories).values(
+        categoryIds.map((categoryId) => ({
+          postId: post.id,
+          categoryId,
+        })),
+      );
+    }
+
+    // Insert tag relations
+    if (tagIds.length > 0) {
+      await db.insert(postTags).values(
+        tagIds.map((tagId) => ({
+          postId: post.id,
+          tagId,
+        })),
+      );
+    }
 
     revalidatePath("/admin/posts");
     return { success: true, post };
@@ -66,6 +100,15 @@ export async function updatePost(id: number, formData: FormData) {
     const content = formData.get("content") as string;
     const excerpt = formData.get("excerpt") as string;
     const status = (formData.get("status") as "draft" | "published") || "draft";
+    const publishedAtInput = formData.get("publishedAt") as string;
+    const categoryIds = formData
+      .getAll("categoryIds")
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id));
+    const tagIds = formData
+      .getAll("tagIds")
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id));
 
     if (!title || !slug || !content) {
       return { success: false, error: "必須項目を入力してください" };
@@ -87,12 +130,38 @@ export async function updatePost(id: number, formData: FormData) {
         excerpt: excerpt || null,
         status,
         publishedAt:
-          status === "published" && currentPost.status === "draft"
-            ? new Date()
-            : currentPost.publishedAt,
+          status === "published"
+            ? publishedAtInput
+              ? new Date(publishedAtInput)
+              : currentPost.status === "draft"
+                ? new Date()
+                : currentPost.publishedAt
+            : null,
       })
       .where(eq(posts.id, id))
       .returning();
+
+    // Update category relations
+    await db.delete(postCategories).where(eq(postCategories.postId, id));
+    if (categoryIds.length > 0) {
+      await db.insert(postCategories).values(
+        categoryIds.map((categoryId) => ({
+          postId: id,
+          categoryId,
+        })),
+      );
+    }
+
+    // Update tag relations
+    await db.delete(postTags).where(eq(postTags.postId, id));
+    if (tagIds.length > 0) {
+      await db.insert(postTags).values(
+        tagIds.map((tagId) => ({
+          postId: id,
+          tagId,
+        })),
+      );
+    }
 
     revalidatePath("/admin/posts");
     revalidatePath(`/admin/posts/${id}/edit`);
