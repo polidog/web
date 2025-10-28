@@ -22,7 +22,7 @@ export default async function PostsPage({
 }) {
   const params = await searchParams;
   const page = Number(params.page) || 1;
-  const perPage = 10;
+  const perPage = 50;
   const offset = (page - 1) * perPage;
 
   // Get paginated posts
