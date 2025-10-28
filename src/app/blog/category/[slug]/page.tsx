@@ -1,41 +1,98 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { posts, postCategories, categories } from "@/db/schema";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Pagination } from "@/components/ui/pagination";
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description: "ブログ記事一覧",
-};
-
-export default async function BlogPage({
-  searchParams,
-}: {
+interface CategoryPageProps {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;
-}) {
-  const params = await searchParams;
-  const page = Number(params.page) || 1;
+}
+
+// 動的メタデータ生成
+export async function generateMetadata({
+  params,
+}: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.slug, slug));
+
+  if (!category) {
+    return {
+      title: "カテゴリが見つかりません",
+    };
+  }
+
+  return {
+    title: `${category.name}`,
+    description: `${category.name}カテゴリの記事一覧`,
+  };
+}
+
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: CategoryPageProps) {
+  const { slug } = await params;
+  const searchParamsResolved = await searchParams;
+  const page = Number(searchParamsResolved.page) || 1;
   const perPage = 10;
   const offset = (page - 1) * perPage;
 
-  // 公開済みの記事を取得 (ページネーション付き)
-  const publishedPosts = await db
+  // カテゴリを取得
+  const [category] = await db
     .select()
+    .from(categories)
+    .where(eq(categories.slug, slug));
+
+  if (!category) {
+    notFound();
+  }
+
+  // カテゴリに紐づく公開済み記事を取得
+  const categoryPostsRaw = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      slug: posts.slug,
+      excerpt: posts.excerpt,
+      publishedAt: posts.publishedAt,
+    })
     .from(posts)
-    .where(eq(posts.status, "published"))
+    .innerJoin(postCategories, eq(posts.id, postCategories.postId))
+    .where(
+      and(
+        eq(postCategories.categoryId, category.id),
+        eq(posts.status, "published"),
+      ),
+    )
     .orderBy(desc(posts.publishedAt))
     .limit(perPage)
     .offset(offset);
+
+  // 重複を除去
+  const categoryPosts = Array.from(
+    new Map(categoryPostsRaw.map((item) => [item.slug, item])).values(),
+  );
 
   // 総記事数を取得
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(posts)
-    .where(eq(posts.status, "published"));
+    .innerJoin(postCategories, eq(posts.id, postCategories.postId))
+    .where(
+      and(
+        eq(postCategories.categoryId, category.id),
+        eq(posts.status, "published"),
+      ),
+    );
 
   const totalPages = Math.ceil(count / perPage);
 
@@ -46,24 +103,31 @@ export default async function BlogPage({
       <main className="flex-1">
         <div className="container mx-auto px-4 py-16 max-w-4xl">
           <header className="mb-12">
+            <Link
+              href="/blog"
+              className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8 transition-colors"
+            >
+              ← ブログ一覧に戻る
+            </Link>
+
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Blog
+              カテゴリ: {category.name}
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              技術記事やメモを公開しています
+              {count}件の記事
             </p>
           </header>
 
           {count === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 dark:text-gray-400">
-                まだ記事がありません
+                このカテゴリに記事がありません
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-8">
-                {publishedPosts.map((post) => {
+                {categoryPosts.map((post) => {
                   const publishedDate = post.publishedAt
                     ? new Date(post.publishedAt)
                     : new Date();
@@ -75,7 +139,7 @@ export default async function BlogPage({
 
                   return (
                     <article
-                      key={post.id}
+                      key={post.slug}
                       className="border-b border-gray-200 dark:border-gray-800 pb-8 last:border-b-0"
                     >
                       <Link

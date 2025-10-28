@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Home, Settings } from "lucide-react";
+import { FileText, Folder, Home, Tag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "ダッシュボード", href: "/admin/dashboard", icon: Home },
   { name: "記事管理", href: "/admin/posts", icon: FileText },
-  { name: "設定", href: "/admin/settings", icon: Settings },
+  { name: "カテゴリ", href: "/admin/categories", icon: Folder },
+  { name: "タグ", href: "/admin/tags", icon: Tag },
 ];
 
 export function AdminSidebar() {
