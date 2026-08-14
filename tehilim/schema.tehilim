@@ -1,0 +1,27 @@
+// Tehilim schema — see https://github.com/polidog/tehilim
+
+datasource db {
+  provider = "sqlite"
+  url      = "sqlite:./dev.sqlite"
+}
+
+generator client {
+  output    = "../src/Tehilim"
+  namespace = "App\\Tehilim"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  body      String?
+  published Boolean  @default(false)
+  authorId  Int
+  createdAt DateTime @default(now())
+}

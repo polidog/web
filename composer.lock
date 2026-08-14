@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6ea6e6765d83e59a3e8e3ce0ca6fc4d2",
+    "content-hash": "e47b903c2f52a237ab2d47f2ad26f0bf",
     "packages": [
         {
             "name": "firebase/php-jwt",
@@ -292,6 +292,56 @@
                 "source": "https://github.com/polidog/relayer/tree/v0.25.0"
             },
             "time": "2026-05-24T00:31:12+00:00"
+        },
+        {
+            "name": "polidog/tehilim",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/polidog/tehilim.git",
+                "reference": "2e1ebe82ded3932d865b52979661a18d2b66ccfb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/polidog/tehilim/zipball/2e1ebe82ded3932d865b52979661a18d2b66ccfb",
+                "reference": "2e1ebe82ded3932d865b52979661a18d2b66ccfb",
+                "shasum": ""
+            },
+            "require": {
+                "ext-pdo": "*",
+                "php": "^8.5"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.64",
+                "phpstan/phpstan": "^2.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "bin": [
+                "bin/tehilim"
+            ],
+            "type": "library",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Polidog\\Tehilim\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Prisma-style schema-first database toolkit for PHP. No class mapping; generated query clients with PHPStan-friendly array shapes.",
+            "support": {
+                "issues": "https://github.com/polidog/tehilim/issues",
+                "source": "https://github.com/polidog/tehilim/tree/v0.1.0"
+            },
+            "time": "2026-05-22T10:10:42+00:00"
         },
         {
             "name": "polidog/use-php",
