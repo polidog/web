@@ -15,7 +15,14 @@
         ],
         "post-update-cmd": [
             "Polidog\\UsePhp\\Installer\\AssetInstaller::publish"
+        ],
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "php -S 127.0.0.1:8000 -t public"
         ]
+    },
+    "scripts-descriptions": {
+        "serve": "開発用ビルトインサーバを http://127.0.0.1:8000 で起動する"
     },
     "extra": {
         "relayer": {
