@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 管理画面のダッシュボード。件数と、直近に触った記事だけを出す。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/admin', 'ダッシュボード');
+
+    return function () use ($posts): Element {
+        $counts = $posts->counts();
+        $recent = $posts->listForAdmin('post', 1, perPage: 10);
+
+        $card = static fn (string $label, int $value, string $href): Element => (
+            <a
+                href={$href}
+                className="rounded-lg border border-gray-200 bg-white p-6 hover:border-sky-300 dark:border-gray-800 dark:bg-slate-800 dark:hover:border-sky-600"
+            >
+                <p className="text-sm text-gray-500 dark:text-gray-400">{$label}</p>
+                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{(string) $value}</p>
+            </a>
+        );
+
+        return (
+            <div className="space-y-10">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {$card('公開中の記事', $counts['posts'], '/admin/posts?status=published')}
+                    {$card('下書き', $counts['drafts'], '/admin/posts?status=draft')}
+                    {$card('固定ページ', $counts['pages'], '/admin/pages')}
+                </div>
+
+                <section>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">最近の記事</h2>
+                        <a
+                            href="/admin/posts/new"
+                            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+                        >新しい記事</a>
+                    </div>
+                    <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-800">
+                        {\array_map(
+                            static fn (array $post): Element => (
+                                <a
+                                    href={\sprintf('/admin/posts/%d', (int) $post['id'])}
+                                    className="flex items-center justify-between border-b border-gray-100 px-4 py-3 last:border-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-slate-700"
+                                >
+                                    <span className="text-sm text-gray-900 dark:text-white">{(string) $post['title']}</span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        {'published' === $post['status'] ? '公開' : '下書き'}
+                                    </span>
+                                </a>
+                            ),
+                            $recent->items,
+                        )}
+                    </div>
+                </section>
+            </div>
+        );
+    };
+};

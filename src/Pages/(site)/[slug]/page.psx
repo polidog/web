@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\HtmlToElement;
+use App\Support\PageCache;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 管理画面から自由に作れる 1 階層のページ（`/about` など）。
+ *
+ * このルートは動的セグメント 1 つだけなので、`/blog` や `/archives` の
+ * ような静的セグメントを持つルートに必ず負ける（ルーターは静的セグメント
+ * が多い順に並べて照合する）。つまり「自由に作れるページ」を足しても
+ * 既存のルートを食い潰さない。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $path = '/' . \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+
+    $ctx->cache(PageCache::post($path));
+
+    return function () use ($ctx, $posts, $meta, $path): Element {
+        $page = $posts->findPublishedByPath($path, 'page') ?? $ctx->notFound();
+
+        $meta->apply(
+            path: $path,
+            title: (string) $page['title'],
+            description: (string) ($page['excerpt'] ?? ''),
+        );
+
+        return (
+            <article className="mx-auto max-w-3xl">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                    {(string) $page['title']}
+                </h1>
+                <div className="mt-10 prose prose-slate max-w-none dark:prose-invert prose-a:text-sky-600 dark:prose-a:text-sky-400">
+                    {HtmlToElement::convert((string) $page['html'])}
+                </div>
+            </article>
+        );
+    };
+};

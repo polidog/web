@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * `/categories/` — taxonomy のインデックス。カテゴリは 5 つしかないが、
+ * Hugo が吐いていた URL なので残す。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $ctx->cache(PageCache::list());
+    $meta->apply('/categories', 'カテゴリ', '記事のカテゴリ一覧。');
+
+    return function () use ($posts): Element {
+        $categories = $posts->terms('Category');
+
+        return (
+            <div>
+                {Components::heading('カテゴリ')}
+                {Components::termCloud($categories, '/categories')}
+            </div>
+        );
+    };
+};

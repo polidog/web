@@ -1,9 +1,92 @@
+parameters:
+  # DATABASE_PATH が未設定ならプロジェクト内の var/cms.db。fly.io では
+  # secrets/env で /data/cms.db（volume）を指す。%env()% を経由するのは
+  # container:compile がビルド時の値を焼き込まないようにするため。
+  app.default_database_path: '%app.project_root%/var/cms.db'
+  app.database_path: '%env(default:app.default_database_path:DATABASE_PATH)%'
+
+  # 管理画面からアップロードされた画像と、Hugo から移設した既存画像の置き場。
+  # 本番は volume 上。Caddy が /images/* をここから直接配信する。
+  app.default_uploads_dir: '%app.project_root%/var/uploads'
+  app.uploads_dir: '%env(default:app.default_uploads_dir:UPLOADS_DIR)%'
+
+  # ETag の保管先。既定は var/cache/etags だが、そこはイメージの中なので
+  # デプロイのたびに消える = 304 が効かなくなる。fly.io では volume 上を
+  # 指して永続させる。
+  app.default_etags_dir: '%app.project_root%/var/cache/etags'
+  app.etags_dir: '%env(default:app.default_etags_dir:ETAGS_DIR)%'
+
+  app.site_url: '%env(default:app.default_site_url:SITE_URL)%'
+  app.default_site_url: 'https://polidog.jp'
+
+  app.disqus_shortname: '%env(default:app.empty:DISQUS_SHORTNAME)%'
+
+  # `%env(default::VAR)%` は未設定時に **null** を返す。受け側は「空文字なら
+  # 無効」で揃えてあるので、空文字を返すパラメータを既定値に指名する。
+  app.empty: ''
+
+  # GitHub OAuth。allowed_logins はログインを許可する GitHub アカウント名
+  # （カンマ区切り）。空なら誰もログインできない。
+  app.github.client_id: '%env(default:app.empty:GITHUB_CLIENT_ID)%'
+  app.github.client_secret: '%env(default:app.empty:GITHUB_CLIENT_SECRET)%'
+  app.github.allowed_logins: '%env(default:app.empty:GITHUB_ALLOWED_LOGINS)%'
+
+  # Cloudflare purge。未設定なら CachePurger は no-op になる。
+  app.cloudflare.zone_id: '%env(default:app.empty:CLOUDFLARE_ZONE_ID)%'
+  app.cloudflare.api_token: '%env(default:app.empty:CLOUDFLARE_API_TOKEN)%'
+
 services:
   _defaults:
     autowire: true
     autoconfigure: true
     public: true
 
-  # Register your application services here, e.g.:
-  # App\Service\:
-  #   resource: '../src/Service/'
+  App\Service\:
+    resource: '../src/Service/'
+
+  App\Auth\:
+    resource: '../src/Auth/'
+
+  App\Http\:
+    resource: '../src/Http/'
+
+  PDO:
+    class: PDO
+    factory: ['App\Infrastructure\PdoFactory', 'create']
+    arguments: ['%app.database_path%']
+
+  App\Tehilim\TehilimClient:
+    factory: ['App\Tehilim\TehilimClient', 'fromPdo']
+    arguments: ['@PDO']
+
+  Polidog\Relayer\Http\FileEtagStore:
+    arguments: ['%app.etags_dir%']
+
+  # サイト全体の設定値。レイアウトとページから型で受け取れるようにする
+  # （superglobals も getenv も触らせないため）。
+  App\Support\SiteConfig:
+    arguments:
+      $siteUrl: '%app.site_url%'
+      $disqusShortname: '%app.disqus_shortname%'
+
+  # パスワード認証は使わないが、UserProvider をバインドしないと Relayer は
+  # Authenticator を DI に登録せず #[Auth] / requireAuth() が動かない
+  # （vendor/polidog/relayer/src/Di/ContainerFactory.php の遅延登録）。
+  Polidog\Relayer\Auth\UserProvider:
+    alias: App\Auth\GithubUserProvider
+
+  App\Service\CachePurger:
+    arguments:
+      $zoneId: '%app.cloudflare.zone_id%'
+      $apiToken: '%app.cloudflare.api_token%'
+      $siteUrl: '%app.site_url%'
+
+  App\Service\MediaStorage:
+    arguments:
+      $uploadsDir: '%app.uploads_dir%'
+
+  App\Auth\GithubOAuth:
+    arguments:
+      $clientId: '%app.github.client_id%'
+      $clientSecret: '%app.github.client_secret%'
+      $allowedLogins: '%app.github.allowed_logins%'

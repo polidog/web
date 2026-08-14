@@ -1,5 +1,8 @@
 /vendor/
 /var/
+/node_modules/
 /public/usephp.js
+# Tailwind のビルド成果物。Docker のビルドステージで生成する。
+/public/assets/style.css
 /.env.local
 /.env.*.local

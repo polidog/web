@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 全タグの一覧（Hugo の `content/tech-tags/_index.md` + `terms-tech.html`）。
+ * `/tags/` にも同じ内容のページがあり、どちらも Hugo 時代から生きている
+ * URL なので両方残す。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $ctx->cache(PageCache::list());
+    $meta->apply('/tech-tags', 'タグ', 'これまでに書いた記事のタグ一覧。');
+
+    return function () use ($posts): Element {
+        $tags = $posts->terms('Tag');
+
+        return (
+            <div>
+                {Components::heading('タグ', \sprintf('%d 個のタグ', \count($tags)))}
+                {Components::termCloud($tags, '/tags')}
+            </div>
+        );
+    };
+};

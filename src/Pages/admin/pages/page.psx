@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Http\Request;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 固定ページの一覧（`kind = "page"`）。`/about` のような 1 階層の
+ * ページはここから自由に増やせる。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Request $request): Closure {
+    $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/admin/pages', 'ページ');
+
+    $page = \max(1, (int) ($request->query('page') ?? '1'));
+
+    return function () use ($posts, $page): Element {
+        $list = $posts->listForAdmin('page', $page);
+
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">ページ</h1>
+                    <a
+                        href="/admin/pages/new"
+                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+                    >新しいページ</a>
+                </div>
+                {AdminComponents::postTable($list, '/admin/pages')}
+                {AdminComponents::adminPagination($list, '/admin/pages')}
+            </div>
+        );
+    };
+};

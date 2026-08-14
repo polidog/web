@@ -1,0 +1,94 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostFormMapper;
+use App\Service\PostRepository;
+use App\Service\PostWriter;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Http\Request;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 記事の編集。`/admin/posts/new` は静的セグメントなのでこちらより
+ * 優先され、`new` が ID として解釈されることはない。
+ */
+return function (
+    PageContext $ctx,
+    PostRepository $posts,
+    PostWriter $writer,
+    PostFormMapper $mapper,
+    PageMeta $meta,
+    Request $request,
+): Closure {
+    $user = $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+
+    $id = (int) ($ctx->params['id'] ?? 0);
+    $post = $posts->findById($id);
+    if (null === $post || 'post' !== $post['kind']) {
+        $ctx->notFound();
+    }
+
+    $meta->apply(\sprintf('/admin/posts/%d', $id), (string) $post['title']);
+
+    $errors = [];
+    $submitted = [];
+
+    $save = $ctx->action('save', function (array $form) use ($writer, $mapper, $ctx, $user, $id, &$errors, &$submitted): void {
+        $submitted = $form;
+        $mapped = $mapper->map($form, 'post', (int) $user->id);
+
+        if (null === $mapped['input']) {
+            $errors = \array_values($mapped['errors']);
+
+            return;
+        }
+
+        $writer->save($mapped['input'], $id);
+        $ctx->redirect(\sprintf('/admin/posts/%d?saved=1', $id));
+    });
+
+    $delete = $ctx->action('delete', function (array $form) use ($writer, $ctx, $id): void {
+        $writer->delete($id);
+        $ctx->redirect('/admin/posts');
+    });
+
+    $saved = null !== $request->query('saved');
+
+    return function () use ($posts, $post, $id, $save, $delete, $saved, &$errors, &$submitted): Element {
+        $tags = \array_column($posts->tagsOf($id), 'name');
+        $categories = \array_column($posts->categoriesOf($id), 'name');
+
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">記事を編集</h1>
+                    <a
+                        href="/admin/posts"
+                        className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                    >一覧に戻る</a>
+                </div>
+
+                {$saved
+                    ? <p className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                        保存しました。キャッシュも更新済みです。
+                    </p>
+                    : null}
+
+                {AdminComponents::postForm(
+                    saveAction: $save,
+                    post: [] !== $submitted ? $submitted + $post : $post,
+                    tags: isset($submitted['tags']) ? [(string) $submitted['tags']] : $tags,
+                    categories: isset($submitted['categories']) ? [(string) $submitted['categories']] : $categories,
+                    errors: $errors,
+                    deleteAction: $delete,
+                )}
+            </div>
+        );
+    };
+};

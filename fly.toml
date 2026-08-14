@@ -1,0 +1,56 @@
+# fly.io の構成。
+#
+# 台数は 1 台に固定する。DB が volume 上の SQLite で、書き込み手が
+# 増えると壊れるため（`fly scale count 1` で維持すること）。
+# CDN が前段にいるので、公開側のトラフィックはほとんどここまで来ない。
+
+app = "polidog-jp"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  # APP_ENV を dev 以外にすると本番扱い（PSX の事前コンパイル済み成果物を
+  # 読み、プロファイラは no-op になる）。
+  APP_ENV = "production"
+  SERVER_NAME = ":8080"
+
+  # すべて volume の上。ETag をイメージ内に置くとデプロイのたびに消え、
+  # 304 が効かなくなる。
+  DATABASE_PATH = "/data/cms.db"
+  UPLOADS_DIR = "/data/uploads"
+  ETAGS_DIR = "/data/etags"
+
+  SITE_URL = "https://polidog.jp"
+  DISQUS_SHORTNAME = "polidoglab"
+  GITHUB_ALLOWED_LOGINS = "polidog"
+
+# secrets（`fly secrets set` で投入する。fly.toml には書かない）:
+#   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
+#   CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN
+#   USEPHP_SNAPSHOT_SECRET
+
+[[mounts]]
+  source = "polidog_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # SQLite への書き込みが 1 プロセスに収まるよう、勝手に増やさせない。
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[deploy]
+  # 1 台構成なので、新旧が同時に volume を掴まないよう入れ替え式にする。
+  strategy = "immediate"

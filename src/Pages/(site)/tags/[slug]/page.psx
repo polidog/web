@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\HugoSlug;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * タグ別の一覧。Hugo の taxonomy term ページ `/tags/<slug>/` を引き継ぐ。
+ * slug は Hugo の urlize がそのまま URL にしたもので、日本語や記号
+ * （`.comマスター` など）も含む。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $slug = \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+
+    $ctx->cache(PageCache::list());
+
+    return function () use ($ctx, $posts, $meta, $slug): Element {
+        $tag = $posts->findTerm('Tag', $slug) ?? $ctx->notFound();
+        $list = $posts->listByTag($slug, 1);
+
+        $meta->apply(
+            path: '/tags/' . $slug,
+            title: \sprintf('タグ: %s', $tag['name']),
+            description: \sprintf('%s に関する記事の一覧。', $tag['name']),
+        );
+
+        return (
+            <div>
+                {Components::heading(
+                    $tag['name'],
+                    \sprintf('%d 件の記事', $list->total),
+                )}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages(), \rtrim(HugoSlug::toPath('/tags', $slug), '/'))}
+            </div>
+        );
+    };
+};

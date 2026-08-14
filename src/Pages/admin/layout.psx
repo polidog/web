@@ -1,0 +1,80 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Layouts;
+
+use Polidog\Relayer\Auth\AuthenticatorInterface;
+use Polidog\Relayer\Router\Layout\LayoutComponent;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 管理画面の外殻。公開側の RootLayout とは別系統になるよう、公開ページを
+ * `(site)` ルートグループに閉じ込めてある（グループは URL セグメントを
+ * 増やさないので、移動しても既存 URL は 1 本も変わらない）。
+ *
+ * レイアウトは認証ガードの対象外なので、ここではログイン状態を「表示に
+ * 使うだけ」。実際のガードは各ページの `requireAuth()` が行う。
+ */
+final class AdminLayout extends LayoutComponent
+{
+    /** @var list<array{href: string, label: string}> */
+    private const array NAVIGATION = [
+        ['href' => '/admin', 'label' => 'ダッシュボード'],
+        ['href' => '/admin/posts', 'label' => '記事'],
+        ['href' => '/admin/pages', 'label' => 'ページ'],
+        ['href' => '/admin/media', 'label' => '画像'],
+    ];
+
+    public function __construct(private readonly ?AuthenticatorInterface $auth = null) {}
+
+    public function render(): Element
+    {
+        $user = $this->auth?->user();
+
+        return (
+            <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-900">
+                <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-800">
+                    <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-4">
+                        <a href="/admin" className="text-lg font-bold text-gray-900 dark:text-white">管理画面</a>
+                        {null !== $user
+                            ? <nav className="flex items-center gap-4">
+                                {\array_map(self::navLink(...), self::NAVIGATION)}
+                            </nav>
+                            : null}
+                        <div className="ml-auto flex items-center gap-4 text-sm">
+                            <a
+                                href="/"
+                                className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                                target="_blank"
+                                rel="noopener"
+                            >サイトを見る</a>
+                            {null !== $user
+                                ? <a
+                                    href="/admin/logout"
+                                    className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                                >{\sprintf('%s / ログアウト', $user->displayName)}</a>
+                                : null}
+                        </div>
+                    </div>
+                </header>
+                <main className="mx-auto max-w-6xl px-4 py-10">
+                    {$this->getChildren()}
+                </main>
+            </div>
+        );
+    }
+
+    /**
+     * @param array{href: string, label: string} $item
+     */
+    private static function navLink(array $item): Element
+    {
+        return H::a(
+            href: $item['href'],
+            className: 'text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white',
+            children: $item['label'],
+        );
+    }
+}

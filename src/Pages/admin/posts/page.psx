@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Http\Request;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 記事の一覧。下書きも含め、状態と語句で絞り込める。
+ * 1301 件あるので検索が無いと使い物にならない。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Request $request): Closure {
+    $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/admin/posts', '記事');
+
+    $page = \max(1, (int) ($request->query('page') ?? '1'));
+    $status = $request->query('status') ?? '';
+    $query = $request->query('q') ?? '';
+
+    return function () use ($posts, $page, $status, $query): Element {
+        $list = $posts->listForAdmin('post', $page, '' !== $status ? $status : null, $query);
+
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">記事</h1>
+                    <a
+                        href="/admin/posts/new"
+                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+                    >新しい記事</a>
+                </div>
+
+                <form method="get" action="/admin/posts" className="flex flex-wrap items-center gap-3">
+                    <input
+                        type="search"
+                        name="q"
+                        value={$query}
+                        placeholder="タイトル・URL で検索"
+                        className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-slate-700 dark:text-white"
+                    />
+                    <select
+                        name="status"
+                        className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-slate-700 dark:text-white"
+                    >
+                        <option value="" selected={'' === $status}>すべて</option>
+                        <option value="published" selected={'published' === $status}>公開</option>
+                        <option value="draft" selected={'draft' === $status}>下書き</option>
+                    </select>
+                    <button
+                        type="submit"
+                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-slate-700"
+                    >絞り込む</button>
+                </form>
+
+                {AdminComponents::postTable($list, '/admin/posts')}
+                {AdminComponents::adminPagination(
+                    $list,
+                    '/admin/posts',
+                    \http_build_query(\array_filter(['status' => $status, 'q' => $query])),
+                )}
+            </div>
+        );
+    };
+};

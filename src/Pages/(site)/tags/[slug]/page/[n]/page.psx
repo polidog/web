@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\HugoSlug;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * タグ一覧の 2 ページ目以降（`/tags/php/page/2/`）。
+ * tech は 600 件を超えるので、ここが無いと 25 件目から先に辿り着けない。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $slug = \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+    $page = (int) ($ctx->params['n'] ?? 1);
+
+    if ($page < 2) {
+        $ctx->redirect(HugoSlug::toPath('/tags', $slug), 301);
+    }
+
+    $ctx->cache(PageCache::list());
+
+    return function () use ($ctx, $posts, $meta, $slug, $page): Element {
+        $tag = $posts->findTerm('Tag', $slug) ?? $ctx->notFound();
+        $list = $posts->listByTag($slug, $page);
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        $meta->apply(
+            path: \sprintf('/tags/%s/page/%d', $slug, $page),
+            title: \sprintf('タグ: %s（%d ページ目）', $tag['name'], $page),
+        );
+        $meta->noindex();
+
+        return (
+            <div>
+                {Components::heading($tag['name'], \sprintf('%d 件の記事', $list->total))}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages(), \rtrim(HugoSlug::toPath('/tags', $slug), '/'))}
+            </div>
+        );
+    };
+};

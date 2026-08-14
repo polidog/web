@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 記事本文のコードブロック。Hugo 時代は chroma がサーバ側で色を付けて
+ * いたが、こちらは CommonMark が `<pre><code class="language-xxx">` を
+ * 出すだけなので、色は付けずに読みやすさだけ整える。言語別の着色が
+ * 欲しくなったら prism を足せばよい（class 名は互換）。
+ */
+@layer components {
+  .prose pre {
+    @apply overflow-x-auto rounded-lg bg-slate-900 p-4 text-sm text-slate-100;
+  }
+
+  .prose pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+
+  .prose :not(pre) > code {
+    @apply rounded bg-gray-100 px-1.5 py-0.5 text-[0.875em] text-sky-700 dark:bg-gray-800 dark:text-sky-300;
+  }
+
+  .prose :not(pre) > code::before,
+  .prose :not(pre) > code::after {
+    content: none;
+  }
+
+  /* 20 年ぶんの記事には幅指定のない大きな画像が多い。はみ出させない。 */
+  .prose img {
+    @apply h-auto max-w-full rounded-lg;
+  }
+
+  .prose iframe,
+  .prose .embed iframe {
+    @apply w-full rounded-lg;
+  }
+
+  .embed-youtube,
+  .embed-speakerdeck {
+    @apply relative h-0 overflow-hidden;
+    padding-bottom: 56.25%;
+  }
+
+  .embed-youtube iframe,
+  .embed-speakerdeck iframe {
+    @apply absolute left-0 top-0 h-full w-full border-0;
+  }
+}

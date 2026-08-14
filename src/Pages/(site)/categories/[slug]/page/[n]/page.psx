@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\HugoSlug;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * カテゴリ一覧の 2 ページ目以降。tech が 669 件、diary が 562 件あるので必須。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $slug = \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+    $page = (int) ($ctx->params['n'] ?? 1);
+
+    if ($page < 2) {
+        $ctx->redirect(HugoSlug::toPath('/categories', $slug), 301);
+    }
+
+    $ctx->cache(PageCache::list());
+
+    return function () use ($ctx, $posts, $meta, $slug, $page): Element {
+        $category = $posts->findTerm('Category', $slug) ?? $ctx->notFound();
+        $list = $posts->listByCategory($slug, $page);
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        $meta->apply(
+            path: \sprintf('/categories/%s/page/%d', $slug, $page),
+            title: \sprintf('カテゴリ: %s（%d ページ目）', $category['name'], $page),
+        );
+        $meta->noindex();
+
+        return (
+            <div>
+                {Components::heading($category['name'], \sprintf('%d 件の記事', $list->total))}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages(), \rtrim(HugoSlug::toPath('/categories', $slug), '/'))}
+            </div>
+        );
+    };
+};

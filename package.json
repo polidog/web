@@ -1,0 +1,13 @@
+{
+  "name": "polidog-web",
+  "private": true,
+  "description": "polidog.jp — Relayer CMS のフロントエンドアセット（CSS のみ）",
+  "scripts": {
+    "build": "tailwindcss -i ./assets/tailwind.css -o ./public/assets/style.css --minify",
+    "watch": "tailwindcss -i ./assets/tailwind.css -o ./public/assets/style.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.10",
+    "tailwindcss": "^3.4.0"
+  }
+}

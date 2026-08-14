@@ -1,0 +1,47 @@
+# FrankenPHP 同梱の Caddy 設定。既定の設定を差し替えて、画像だけを
+# PHP を通さず volume から直接返すようにしている。
+#
+# 画像を PHP 経由にしないのは、CDN のキャッシュが切れて取りに来たときの
+# オリジン負荷を PHP に載せないため。45MB ぶんの過去画像はイメージにも
+# 入れず、DB と同じ volume に置いてある。
+
+{
+	frankenphp
+	order php_server before file_server
+	# fly.io の proxy が TLS を終端するので、コンテナ側は素の HTTP で待つ。
+	auto_https off
+}
+
+{$SERVER_NAME::8080} {
+	log {
+		# 静的アセットのアクセスログは量ばかり多くて読まないので落とす。
+		format console
+	}
+
+	# Hugo 時代から続く /images/... の URL を、volume 上の実ファイルに
+	# そのままマップする。handle_path が先頭の /images を剥がす。
+	handle_path /images/* {
+		root * {$UPLOADS_DIR:/data/uploads}/images
+		header Cache-Control "public, max-age=31536000, immutable"
+		# 画像ディレクトリから何かが実行されないようにする保険。
+		# アップロードは中身を見て画像形式だけ通しているが（MediaStorage）、
+		# ここは PHP を経由せず配信するので、多重に止めておく。
+		header X-Content-Type-Options "nosniff"
+		header Content-Security-Policy "default-src 'none'; sandbox"
+		file_server
+	}
+
+	# ビルド成果物（Tailwind の CSS と site.js）。中身が変われば
+	# デプロイし直すので、こちらは 1 日で十分。
+	handle /assets/* {
+		root * /app/public
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	handle {
+		root * /app/public
+		encode zstd br gzip
+		php_server
+	}
+}

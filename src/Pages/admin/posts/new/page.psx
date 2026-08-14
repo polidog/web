@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostFormMapper;
+use App\Service\PostWriter;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 記事の新規作成。保存すると PostWriter が Markdown をレンダリングし、
+ * ETag を差し替え、Cloudflare を purge するところまでやる。
+ *
+ * 認証は `requireAuth()` で明示する。引数に非 null の `Identity` を
+ * 宣言しても認証必須になるが、その経路だと未ログイン時の転送先が
+ * 既定の `/login` になってしまう。
+ */
+return function (
+    PageContext $ctx,
+    PostWriter $writer,
+    PostFormMapper $mapper,
+    PageMeta $meta,
+): Closure {
+    $user = $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/admin/posts/new', '新しい記事');
+
+    $errors = [];
+    $submitted = [];
+
+    $save = $ctx->action('save', function (array $form) use ($writer, $mapper, $ctx, $user, &$errors, &$submitted): void {
+        $submitted = $form;
+        $mapped = $mapper->map($form, 'post', (int) $user->id);
+
+        if (null === $mapped['input']) {
+            $errors = \array_values($mapped['errors']);
+
+            return;
+        }
+
+        $post = $writer->save($mapped['input']);
+        $ctx->redirect(\sprintf('/admin/posts/%d?saved=1', (int) $post['id']));
+    });
+
+    return function () use ($save, &$errors, &$submitted): Element {
+        // 検証で弾かれたときに入力を捨てない。タグ欄はカンマ区切りの
+        // 生文字列なので、1 要素の配列にして戻せばそのまま再表示される。
+        $post = [] !== $submitted
+            ? $submitted
+            : ['path' => \sprintf('/blog/%s/', \date('Y/m'))];
+
+        return (
+            <div className="space-y-6">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">新しい記事</h1>
+                {AdminComponents::postForm(
+                    saveAction: $save,
+                    post: $post,
+                    tags: isset($submitted['tags']) ? [(string) $submitted['tags']] : [],
+                    categories: isset($submitted['categories']) ? [(string) $submitted['categories']] : [],
+                    errors: $errors,
+                )}
+            </div>
+        );
+    };
+};

@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * `/tags/` — taxonomy のインデックス。Hugo が自動生成していて、今も
+ * 200 を返している URL なので残す（中身は /tech-tags と同じ）。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $ctx->cache(PageCache::list());
+    $meta->apply('/tags', 'タグ', 'これまでに書いた記事のタグ一覧。');
+
+    return function () use ($posts): Element {
+        $tags = $posts->terms('Tag');
+
+        return (
+            <div>
+                {Components::heading('タグ', \sprintf('%d 個のタグ', \count($tags)))}
+                {Components::termCloud($tags, '/tags')}
+            </div>
+        );
+    };
+};

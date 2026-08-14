@@ -1,0 +1,47 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * スラッシュを含む slug のタグ。
+ *
+ * Hugo の urlize はスラッシュを残すので、`php://input` というタグが
+ * `/tags/php/input/` として公開されていた（本番で今も 200）。Relayer の
+ * 動的セグメントは `[^/]+` でスラッシュをまたげないため、2 階層ぶんの
+ * ルートを用意してここで結合する。
+ *
+ * 該当は 741 タグ中この 1 件だけ。`/tags/[slug]/page/[n]` は静的セグメント
+ * `page` を含むぶん優先されるので、ページャの URL を食うことはない。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $slug = \rawurldecode((string) ($ctx->params['slug'] ?? ''))
+        . '/' . \rawurldecode((string) ($ctx->params['sub'] ?? ''));
+
+    $ctx->cache(PageCache::list());
+
+    return function () use ($ctx, $posts, $meta, $slug): Element {
+        $tag = $posts->findTerm('Tag', $slug) ?? $ctx->notFound();
+        $list = $posts->listByTag($slug, 1);
+
+        $meta->apply(
+            path: '/tags/' . $slug,
+            title: \sprintf('タグ: %s', $tag['name']),
+            description: \sprintf('%s に関する記事の一覧。', $tag['name']),
+        );
+
+        return (
+            <div>
+                {Components::heading($tag['name'], \sprintf('%d 件の記事', $list->total))}
+                {Components::postList($list->items)}
+            </div>
+        );
+    };
+};

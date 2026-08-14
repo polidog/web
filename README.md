@@ -1,62 +1,106 @@
-# Relayer application
+# polidog.jp
 
-A [Relayer](https://github.com/polidog/relayer) application.
+2004 年から Hugo で運用してきた [polidog.jp](https://polidog.jp) を、
+[Relayer](https://github.com/polidog/relayer) 製の CMS に置き換えたもの。
 
-## Run
+**動的に生成して CDN に持たせ、更新したときだけ捨てる** 構成にしてある。
+Cloudflare のエッジでヒットしているあいだオリジンには 1 リクエストも来ないので、
+静的サイトに近いランニングコストのまま、ブラウザから記事を書けるようになる。
+
+```
+[Browser] → [Cloudflare]  → [fly.io: FrankenPHP 1 台]
+                ↑ HIT         ├ SQLite  /data/cms.db
+                              └ 画像    /data/uploads
+記事を保存 → ETag を更新 → 記事 URL・トップ・RSS を purge
+```
+
+既存 URL は 1 本も変えていない。`bin/verify-urls.php` が Hugo のビルド成果物
+（20 年ぶんの URL）を実際に叩いて、それを毎回確かめる。
+
+## 開発
 
 ```bash
 composer install
-php -S 127.0.0.1:8000 -t public
+npm install                       # Tailwind をビルドするときだけ
+npm run build                     # public/assets/style.css を生成
+
+vendor/bin/tehilim migrate deploy # var/cms.db を作る
+php bin/import-hugo.php --content=../website/content   # 記事を取り込む
+
+php -S 127.0.0.1:8000 -t public   # → http://127.0.0.1:8000
 ```
 
-Then open <http://127.0.0.1:8000>.
+管理画面は `/admin`。ログインには GitHub OAuth の設定が要る（`.env` の
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_ALLOWED_LOGINS`）。
+OAuth アプリの Authorization callback URL には `<SITE_URL>/admin/auth/callback`
+を登録する。
 
-Or, with no host PHP:
+本番と同じ経路（FrankenPHP + Caddy + volume）で動かしたいときは
+`docker compose up --build`（→ http://localhost:8080）。
+
+## 移行
 
 ```bash
-docker compose up --build
+php bin/import-hugo.php --dry-run   # 件数と問題だけ見る
+php bin/import-hugo.php             # 取り込む（記事・画像・ETag）
+php bin/verify-urls.php --base=http://127.0.0.1:8000   # URL が壊れていないか
 ```
 
-Then open <http://localhost:8000>.
+`verify-urls.php` は Hugo の `public/` にある全ページを叩き、DB の状態と
+突き合わせる。手元の `public/` は `--buildDrafts` 付きでビルドされていて
+本番に無いページも含むので、「下書きなら 404 が正解」「削除済み記事なら
+404 が正解」として判定する。**期待と違うものが 1 件でもあれば失敗**（終了
+コード 1）。
 
-## Layout
-
-```
-.env                   APP_ENV=dev
-composer.json
-RELAYER.md             agent/LLM coding conventions (co-versioned)
-AGENTS.md              auto-read pointer → RELAYER.md
-CLAUDE.md              auto-read pointer → RELAYER.md
-.claude/               Claude Code skill + reviewer agent (co-versioned)
-Dockerfile             FrankenPHP (PHP 8.5) image
-php.ini                PHP overrides (loaded via conf.d)
-compose.yaml           `docker compose up` → http://localhost:8000
-.dockerignore
-config/
-  services.yaml        Symfony DI registrations (auto-loaded)
-public/
-  index.php            single entrypoint: Relayer::boot()->run()
-src/
-  AppConfigurator.php  register your services here
-  Pages/               file-based routes (Next.js App Router-style)
-    layout.psx
-    page.psx
-```
-
-## Production
-
-`APP_ENV=dev` compiles `.psx`, scans routes, and rebuilds the
-DI container on the fly. For deploys, unset (or change)
-`APP_ENV` and precompile all three once:
+## デプロイ（fly.io）
 
 ```bash
-composer install --no-dev --classmap-authoritative
-vendor/bin/usephp compile src/Pages      # .psx  -> compiled PHP
-vendor/bin/relayer routes:compile         # route map -> PHP
-vendor/bin/relayer container:compile      # DI container -> PHP
+fly volumes create polidog_data --region nrt --size 3
+fly secrets set GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... \
+                CLOUDFLARE_ZONE_ID=... CLOUDFLARE_API_TOKEN=... \
+                USEPHP_SNAPSHOT_SECRET="$(openssl rand -hex 32)"
+fly deploy
+fly scale count 1        # SQLite の書き手を 1 つに保つ
 ```
 
-Each step is presence-gated: a missing artifact degrades to
-the live path rather than breaking. In production also set
-OPcache `validate_timestamps=0` — the production block in
-`php.ini` documents this.
+ビルド時に Tailwind の CSS、`.psx` のコンパイル、ルートマップ、DI コンテナを
+全部作ってから配る。起動時には `docker-entrypoint.sh` が volume を初期化し、
+`tehilim migrate deploy` を流す。
+
+初回デプロイ後、または DB を入れ替えたあとは ETag を作り直す:
+
+```bash
+fly ssh console -C "php /app/bin/refresh-caches.php"
+```
+
+### Cloudflare 側の設定
+
+無料プランは既定で HTML をキャッシュしないので、**Cache Rules で明示する**
+必要がある。これをやらないと CDN 前提のコスト構造が成立しない。
+
+1. **Cache Rules** に「Eligible for cache」のルールを追加
+   - 対象: `(not starts_with(http.request.uri.path, "/admin"))`
+   - Cache eligibility: *Eligible for cache*
+   - Edge TTL: *Use cache-control header if present*（アプリの `s-maxage` に従わせる）
+2. `/admin/*` には別ルールで *Bypass cache* を設定
+3. purge 用の API トークンを発行し（Zone → Cache Purge の権限）、
+   `CLOUDFLARE_ZONE_ID` と `CLOUDFLARE_API_TOKEN` を fly secrets に入れる
+
+トークンを設定しないあいだ purge は no-op になる（`s-maxage` が切れるまで
+古い内容が残るだけで、壊れはしない）。
+
+## 構成
+
+| 場所 | 役割 |
+| --- | --- |
+| `src/Pages/(site)/` | 公開側。`(site)` はルートグループなので URL には出ない |
+| `src/Pages/admin/` | 管理画面 |
+| `src/Service/` | リポジトリ・保存・Markdown・purge |
+| `src/Support/` | 値オブジェクトと純粋関数（キャッシュ方針・slug・HTML 変換） |
+| `src/View/` | ページ間で共用する表示部品 |
+| `src/Tehilim/` | スキーマからの生成物。手で編集しない |
+| `tehilim/` | スキーマとマイグレーション |
+| `bin/` | 移行・検証・キャッシュ再生成 |
+
+設計判断の理由と落とし穴は [CLAUDE.md](./CLAUDE.md) に、フレームワークの
+規約は [RELAYER.md](./RELAYER.md) にある。

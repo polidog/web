@@ -1,48 +1,66 @@
-# Relayer app — FrankenPHP image. The default .env sets
-# APP_ENV=dev, which compiles .psx on the fly, so the image
-# needs no build step. For production, unset APP_ENV and
-# precompile once:
-#   vendor/bin/usephp compile src/Pages   # .psx -> .psx.php
-#   vendor/bin/relayer routes:compile      # route artifact
-#   vendor/bin/relayer container:compile   # DI container
-# All are pure build steps; prod then reads the artifacts
-# instead of scanning/compiling/rebuilding per request.
+# polidog.jp — Relayer + FrankenPHP。
 #
-# FrankenPHP serves /app/public through its bundled Caddy in
-# classic (per-request) mode, so Relayer's public/index.php
-# front controller works as-is — no framework changes. Worker
-# mode (app kept booted between requests) is a future option.
+# 本番はビルド時に全部コンパイルしてから配る:
+#   Tailwind の CSS / .psx → PHP / ルートマップ / DI コンテナ
+# どれも presence-gated（成果物が無ければライブ経路に縮退する）なので、
+# 1 つ欠けても壊れはしないが、揃えておけばリクエスト時の仕事はほぼゼロになる。
+
+# --- CSS のビルド ---------------------------------------------------------
+# Node はここだけ。ランタイムイメージには 1 バイトも入らない。
+FROM node:22-slim AS css
+
+WORKDIR /build
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
+
+# Tailwind はクラス名をソースから拾うので、スキャン対象を渡す。
+COPY tailwind.config.js ./
+COPY assets ./assets
+COPY src ./src
+RUN npx tailwindcss -i ./assets/tailwind.css -o ./style.css --minify
+
+# --- アプリ ---------------------------------------------------------------
 FROM dunglas/frankenphp:php8.5
 
-# curl and pdo_sqlite ship enabled in the base image.
-# pdo_mysql matches the DATABASE_DSN example in .env and the
-# commented db service in compose.yaml; zip lets composer
-# install from dist. For PostgreSQL append pdo_pgsql here.
-RUN install-php-extensions pdo_mysql zip
+# curl と pdo_sqlite はベースイメージで有効。zip は composer の dist 展開用。
+# opcache は本番のリクエストコストを決めるので明示的に入れる。
+RUN install-php-extensions zip opcache
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Install dependencies in their own layer so editing app code
-# doesn't reinstall them. --no-scripts because the post-install
-# hook (usephp asset publisher) needs the app source, which is
-# copied next; the second install runs it with sources present.
-COPY composer.* ./
-RUN composer install --no-interaction --prefer-dist \
+# 依存は別レイヤーに。アプリのコードを直しても再インストールされない。
+# --no-scripts なのは、post-install の usephp アセット公開がアプリの
+# ソースを必要とするため（次の install で実行される）。
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --prefer-dist --no-dev \
     --no-scripts --no-autoloader
 
 COPY . .
-RUN composer install --no-interaction --prefer-dist
+COPY --from=css /build/style.css /app/public/assets/style.css
 
-# php.ini is loaded as a conf.d override (last, so it wins);
-# edit the project's php.ini, not this path. Applied after the
-# Composer steps so build-time Composer keeps its own memory
-# limit rather than the runtime override.
+RUN composer install --no-interaction --prefer-dist --no-dev \
+    --classmap-authoritative
+
+# 3 つの事前コンパイル。APP_ENV を渡さない（= 本番扱い）ので、
+# ランタイムはここで作った成果物を読むだけになる。
+# container:compile は env をビルド時に焼き込むが、config/services.yaml は
+# secret をすべて %env(...)% 経由で参照しているのでランタイム解決される。
+RUN vendor/bin/usephp compile src/Pages \
+    && vendor/bin/relayer routes:compile \
+    && vendor/bin/relayer container:compile
+
+# php.ini は conf.d の最後に読ませて上書きする。Composer のビルドが
+# 自前のメモリ上限で走れるよう、インストール後に置く。
 COPY php.ini "$PHP_INI_DIR/conf.d/zz-relayer.ini"
 
-# Serve on :8000 to match compose.yaml and the README. With
-# no hostname FrankenPHP also skips auto-HTTPS, which is what
-# you want for local development.
-ENV SERVER_NAME=:8000
-EXPOSE 8000
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENV SERVER_NAME=:8080
+EXPOSE 8080
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

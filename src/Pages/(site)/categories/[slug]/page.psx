@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\HugoSlug;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * カテゴリ別の一覧（`/categories/tech/` など）。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $slug = \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+
+    $ctx->cache(PageCache::list());
+
+    return function () use ($ctx, $posts, $meta, $slug): Element {
+        $category = $posts->findTerm('Category', $slug) ?? $ctx->notFound();
+        $list = $posts->listByCategory($slug, 1);
+
+        $meta->apply(
+            path: '/categories/' . $slug,
+            title: \sprintf('カテゴリ: %s', $category['name']),
+            description: \sprintf('%s カテゴリの記事一覧。', $category['name']),
+        );
+
+        return (
+            <div>
+                {Components::heading($category['name'], \sprintf('%d 件の記事', $list->total))}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages(), \rtrim(HugoSlug::toPath('/categories', $slug), '/'))}
+            </div>
+        );
+    };
+};

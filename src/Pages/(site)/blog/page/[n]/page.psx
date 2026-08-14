@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * `/blog/page/N/` — セクション一覧のページャ。Hugo が 1 ページ目にも
+ * `/blog/page/1/` を吐いていたので、1 のときは `/blog/` に寄せる。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $page = (int) ($ctx->params['n'] ?? 1);
+    if ($page < 2) {
+        $ctx->redirect('/blog/', 301);
+    }
+
+    $ctx->cache(PageCache::list());
+    $meta->apply(\sprintf('/blog/page/%d', $page), \sprintf('Blogs（%d ページ目）', $page));
+    $meta->noindex();
+
+    return function () use ($ctx, $posts, $page): Element {
+        $list = $posts->listPublished($page);
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        return (
+            <div>
+                {Components::heading('Blogs', \sprintf('%d / %d ページ', $list->page, $list->pages()))}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages(), '/blog')}
+            </div>
+        );
+    };
+};

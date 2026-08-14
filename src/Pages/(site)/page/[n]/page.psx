@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 一覧の 2 ページ目以降。Hugo の paginator が `/page/2/` を吐いていたので
+ * 同じ URL に合わせる（`pagination.path = 'page'`）。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $page = (int) ($ctx->params['n'] ?? 1);
+    if ($page < 2) {
+        // `/page/1/` はトップと同じ内容になる。URL を 1 本に寄せる。
+        $ctx->redirect('/', 301);
+    }
+
+    $ctx->cache(PageCache::list());
+    $meta->apply(\sprintf('/page/%d', $page), \sprintf('記事一覧 %d ページ目', $page));
+    $meta->noindex();
+
+    return function () use ($ctx, $posts, $page): Element {
+        $list = $posts->listPublished($page);
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        return (
+            <div>
+                {Components::heading(\sprintf('記事一覧（%d / %d）', $list->page, $list->pages()))}
+                {Components::postList($list->items)}
+                {Components::pagination($list->page, $list->pages())}
+            </div>
+        );
+    };
+};
