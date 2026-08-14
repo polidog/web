@@ -18,11 +18,11 @@
         ],
         "serve": [
             "Composer\\Config::disableProcessTimeout",
-            "php -S 127.0.0.1:8000 -t public"
+            "bin/dev.sh"
         ]
     },
     "scripts-descriptions": {
-        "serve": "開発用ビルトインサーバを http://127.0.0.1:8000 で起動する"
+        "serve": "開発用サーバ（http://127.0.0.1:8000）と Tailwind の watch を同時に起動する"
     },
     "extra": {
         "relayer": {

@@ -27,7 +27,7 @@ npm run build                     # public/assets/style.css を生成
 vendor/bin/tehilim migrate deploy # var/cms.db を作る
 php bin/import-hugo.php --content=../website/content   # 記事を取り込む
 
-php -S 127.0.0.1:8000 -t public   # → http://127.0.0.1:8000
+composer serve                    # → http://127.0.0.1:8000（CSS の watch 付き）
 ```
 
 管理画面は `/admin`。ログインには GitHub OAuth の設定が要る（`.env` の

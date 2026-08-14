@@ -28,8 +28,12 @@ CLI コマンド名はそのままの表記を保つ。RELAYER.md はフレー�
 ```bash
 composer install
 npm install                          # Tailwind のみ（ランタイムには不要）
-php -S 127.0.0.1:8000 -t public      # → http://127.0.0.1:8000
-npm run watch                        # CSS を書き換えながら開発するとき
+composer serve                       # → http://127.0.0.1:8000
+                                     # bin/dev.sh 経由で Tailwind の watch も一緒に動く。
+                                     # .psx にクラスを足したら CSS が自動で焼き直される
+                                     # （手で npm run build を回すと忘れて「HTML には
+                                     # 出ているのに見えない」事故になる）
+composer serve 127.0.0.1:8001        # ポートを変えたいとき
 docker compose up --build            # → http://localhost:8080（本番と同じ経路）
 ```
 
