@@ -12,46 +12,22 @@ use Polidog\UsePhp\Runtime\Element;
 
 /**
  * 月別アーカイブ（Hugo の `content/archives/_index.md` + `archives/list.html`）。
- * 2004 年からの記事があるので、年で束ねて表示する。
+ *
+ * 全記事を新しい順に並べ、月の見出しで束ねて 30 件ずつページングする
+ * （一覧系の既定 25 件ではない — Hugo がここだけ 30 だった）。
  */
 return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
     $ctx->cache(PageCache::list());
     $meta->apply('/archives', '月別アーカイブ', '2004 年からの記事を月別にまとめたもの。');
 
     return function () use ($posts): Element {
-        $byYear = [];
-        $total = 0;
-
-        foreach ($posts->archive() as $row) {
-            [$year, $month] = \explode('-', $row['ym']);
-            $byYear[$year][] = ['month' => (int) $month, 'count' => (int) $row['count']];
-            $total += (int) $row['count'];
-        }
+        $list = $posts->archive(1);
 
         return (
             <div>
-                {Components::heading('月別アーカイブ', \sprintf('全 %d 件', $total))}
-                <div className="space-y-10">
-                    {\array_map(
-                        static fn (string $year): Element => (
-                            <section>
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{$year}年</h2>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {\array_map(
-                                        static fn (array $entry): Element => (
-                                            <span className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                                <span>{\sprintf('%d月', $entry['month'])}</span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400">{(string) $entry['count']}</span>
-                                            </span>
-                                        ),
-                                        $byYear[$year],
-                                    )}
-                                </div>
-                            </section>
-                        ),
-                        \array_keys($byYear),
-                    )}
-                </div>
+                {Components::heading('月別アーカイブ', \sprintf('全 %d 件', $list->total))}
+                {Components::archiveList($list->items)}
+                {Components::pagination($list->page, $list->pages(), '/archives')}
             </div>
         );
     };

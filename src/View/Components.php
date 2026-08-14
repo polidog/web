@@ -77,6 +77,56 @@ final class Components
     }
 
     /**
+     * 月別アーカイブの本体。Hugo の archives/list.html 相当。
+     *
+     * 渡された 1 ページぶん（30 件）を月の見出しで束ねるだけで、
+     * 月をまたいで集計はしない — 同じ月がページをまたいで 2 回出るのは
+     * Hugo と同じ挙動なので、そこは合わせる。
+     *
+     * @param list<array<string, mixed>> $posts 新しい順に並んだ記事
+     */
+    public static function archiveList(array $posts): Element
+    {
+        if ([] === $posts) {
+            return H::p(
+                className: 'text-gray-600 dark:text-gray-400',
+                children: 'まだ記事がありません。',
+            );
+        }
+
+        /** @var array<string, list<array<string, mixed>>> $byMonth */
+        $byMonth = [];
+        foreach ($posts as $post) {
+            // publishedAt は 'Y-m-d H:i:s' の TEXT なので先頭 7 文字が年月。
+            $byMonth[\substr((string) $post['publishedAt'], 0, 7)][] = $post;
+        }
+
+        return H::div(
+            className: 'space-y-8',
+            children: \array_map(
+                static function (string $ym) use ($byMonth): Element {
+                    [$year, $month] = \explode('-', $ym);
+
+                    return H::section(
+                        children: [
+                            // 見出しの月はゼロ埋め 2 桁（Hugo の `2026年08月`）。
+                            H::h2(
+                                className: 'mb-3 text-xl font-semibold text-gray-900 dark:text-white',
+                                children: \sprintf('%s年%s月', $year, $month),
+                            ),
+                            H::ul(
+                                className: 'divide-y divide-gray-200 dark:divide-gray-800',
+                                children: \array_map(self::archiveItem(...), $byMonth[$ym]),
+                            ),
+                        ],
+                    );
+                },
+                \array_keys($byMonth),
+            ),
+        );
+    }
+
+    /**
      * 日付。Hugo の `2006年1月2日` 表記に合わせる（ゼロ埋めしない）。
      */
     public static function date(string $value): Element
@@ -94,6 +144,29 @@ final class Components
                 (int) \date('Y', $timestamp),
                 (int) \date('n', $timestamp),
                 (int) \date('j', $timestamp),
+            ),
+        );
+    }
+
+    /**
+     * アーカイブの 1 行。左にタイトル、右に日付。
+     *
+     * @param array<string, mixed> $post
+     */
+    public static function archiveItem(array $post): Element
+    {
+        return H::li(
+            className: 'py-2',
+            children: H::a(
+                href: (string) $post['path'] . '/',
+                className: 'group flex items-center justify-between gap-4',
+                children: [
+                    H::span(
+                        className: 'text-gray-900 group-hover:text-sky-600 dark:text-white dark:group-hover:text-sky-400',
+                        children: (string) $post['title'],
+                    ),
+                    self::date((string) $post['publishedAt']),
+                ],
             ),
         );
     }

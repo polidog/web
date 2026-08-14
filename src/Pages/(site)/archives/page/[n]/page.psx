@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * `/archives/page/N/` — 月別アーカイブのページャ。Hugo が 1 ページ目にも
+ * `/archives/page/1/` を吐いていたので、1 のときは `/archives/` に寄せる。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $page = (int) ($ctx->params['n'] ?? 1);
+    if ($page < 2) {
+        $ctx->redirect('/archives/', 301);
+    }
+
+    $ctx->cache(PageCache::list());
+    $meta->apply(\sprintf('/archives/page/%d', $page), \sprintf('月別アーカイブ（%d ページ目）', $page));
+    $meta->noindex();
+
+    return function () use ($ctx, $posts, $page): Element {
+        $list = $posts->archive($page);
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        return (
+            <div>
+                {Components::heading('月別アーカイブ', \sprintf('%d / %d ページ', $list->page, $list->pages()))}
+                {Components::archiveList($list->items)}
+                {Components::pagination($list->page, $list->pages(), '/archives')}
+            </div>
+        );
+    };
+};

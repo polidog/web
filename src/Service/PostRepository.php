@@ -25,6 +25,13 @@ final class PostRepository
 {
     public const int PER_PAGE = 25;
 
+    /**
+     * 月別アーカイブだけ 1 ページ 30 件。Hugo の archives/list.html が
+     * サイト既定（25）ではなく 30 でページングしていたので、
+     * `/archives/page/N/` の区切りを変えないためにこの値を使う。
+     */
+    public const int ARCHIVE_PER_PAGE = 30;
+
     private const string SELECT_LIST =
         'SELECT p.id, p.kind, p.path, p.title, p.excerpt, p.eyecatch, p.publishedAt, p.updatedAt';
 
@@ -263,19 +270,32 @@ final class PostRepository
     }
 
     /**
-     * 月別アーカイブ。publishedAt は 'Y-m-d H:i:s' の TEXT なので
-     * substr で年月を切り出せる。
+     * 月別アーカイブ（`/archives/` と `/archives/page/N/`）。
      *
-     * @return list<array{ym: string, count: int}>
+     * Hugo は「月の見出しで束ねた記事のリンク一覧」を 30 件ずつページングして
+     * いた。束ねるのは 1 ページに載る 30 件の中だけなので、月の区切りは
+     * ページをまたぐ（同じ月の見出しが 2 ページに出ることがある）——これも
+     * Hugo と同じ挙動。
+     *
+     * @return Paginated<array<string, mixed>>
      */
-    public function archive(): array
+    public function archive(int $page, int $perPage = self::ARCHIVE_PER_PAGE): Paginated
     {
-        return $this->pdo->query(
-            'SELECT substr(publishedAt, 1, 7) AS ym, COUNT(*) AS count
-             FROM "Post"
-             WHERE kind = \'post\' AND status = \'published\' AND publishedAt IS NOT NULL
-             GROUP BY ym ORDER BY ym DESC',
-        )->fetchAll();
+        $total = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM "Post"
+             WHERE kind = \'post\' AND status = \'published\' AND publishedAt IS NOT NULL',
+        )->fetchColumn();
+
+        $statement = $this->pdo->prepare(
+            'SELECT p.id, p.path, p.title, p.publishedAt FROM "Post" p
+             WHERE p.kind = \'post\' AND p.status = \'published\' AND p.publishedAt IS NOT NULL
+             ORDER BY p.publishedAt DESC, p.id DESC
+             LIMIT :limit OFFSET :offset',
+        );
+        $this->bindWindow($statement, $page, $perPage);
+        $statement->execute();
+
+        return new Paginated($statement->fetchAll(), $total, $page, $perPage);
     }
 
     /**
