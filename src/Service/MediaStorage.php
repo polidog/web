@@ -171,8 +171,8 @@ final class MediaStorage
     private function detectMime(string $path): string
     {
         $info = @\getimagesize($path);
-        if (false !== $info && isset($info['mime'])) {
-            return (string) $info['mime'];
+        if (false !== $info) {
+            return $info['mime'];
         }
 
         // getimagesize が読めない形式（新しいコンテナなど）は finfo に

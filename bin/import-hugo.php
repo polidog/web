@@ -53,17 +53,33 @@ if (isset($options['help'])) {
     exit(0);
 }
 
-$contentDir = \rtrim((string) ($options['content'] ?? $projectRoot . '/../website/content'), '/');
+/**
+ * getopt() の値は「文字列」とは限らない —— 同じオプションが 2 回渡されると
+ * 配列に、値なしオプションでは false になる。ここではどれも 1 個の値しか
+ * 意味を持たないので、文字列に落として扱う。
+ *
+ * @param array<string, false|list<string>|string> $options
+ */
+$option = static function (array $options, string $name, string $default): string {
+    $value = $options[$name] ?? null;
+    if (\is_array($value)) {
+        $value = $value[0] ?? null;
+    }
+
+    return \is_string($value) ? $value : $default;
+};
+
+$contentDir = \rtrim($option($options, 'content', $projectRoot . '/../website/content'), '/');
 if (!\is_dir($contentDir)) {
     \fwrite(\STDERR, "content ディレクトリが見つかりません: {$contentDir}\n");
 
     exit(1);
 }
 
-$publicDir = \rtrim((string) ($options['public'] ?? \dirname($contentDir) . '/public'), '/');
-$imagesDir = \rtrim((string) ($options['images'] ?? \dirname($contentDir) . '/static/images'), '/');
+$publicDir = \rtrim($option($options, 'public', \dirname($contentDir) . '/public'), '/');
+$imagesDir = \rtrim($option($options, 'images', \dirname($contentDir) . '/static/images'), '/');
 $dryRun = isset($options['dry-run']);
-$limit = isset($options['limit']) ? (int) $options['limit'] : 0;
+$limit = (int) $option($options, 'limit', '0');
 
 // AppRouter は使わないが、boot() がコンテナを組み立ててくれるのでそれを借りる。
 Relayer::boot($projectRoot, new AppConfigurator($projectRoot));
@@ -77,8 +93,9 @@ $writer->deferInvalidation();
 // 置き場を知っている MediaStorage 本人に聞く。
 /** @var MediaStorage $media */
 $media = $container->get(MediaStorage::class);
-$imagesDestination = isset($options['uploads'])
-    ? \rtrim((string) $options['uploads'], '/') . '/images'
+$uploadsDir = $option($options, 'uploads', '');
+$imagesDestination = '' !== $uploadsDir
+    ? \rtrim($uploadsDir, '/') . '/images'
     : $media->imagesRoot();
 
 echo "content : {$contentDir}\n";

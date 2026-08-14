@@ -1,0 +1,32 @@
+# PHPStan の設定。
+#
+# tehilim の生成物（src/Tehilim）は @phpstan-type で行 shape を宣言している
+# だけで、実行時に返るのは素の array。その shape を実際に検査するのはこの
+# PHPStan であって tehilim ではないので、型安全はここが本体になる。
+#
+# extension.neon は `select` を渡したときの findMany/findFirst の戻り値を
+# 絞り込む拡張（FindSelectReturnTypeExtension）。
+includes:
+    - vendor/polidog/tehilim/extension.neon
+
+parameters:
+    level: 8
+    phpVersion: 80500
+
+    # 既定はシステムの temp。var/cache は元から生成物置き場で gitignore
+    # 済みなので、こちらに寄せておく。
+    tmpDir: var/cache/phpstan
+
+    paths:
+        - src
+        - bin
+        - public
+
+    # .psx は JSX 風の独自構文で PHP パーサが読めない。PHPStan は既定で
+    # .php しか見ないので src/Pages を paths に含めても .psx は素通りし、
+    # 同じディレクトリの route.php / middleware.php だけが検査される。
+
+    excludePaths:
+        analyse:
+            # tehilim が生成する。手で直せないので検査対象から外す。
+            - src/Tehilim

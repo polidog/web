@@ -19,14 +19,19 @@
         "serve": [
             "Composer\\Config::disableProcessTimeout",
             "bin/dev.sh"
-        ]
+        ],
+        "stan": "phpstan analyse --memory-limit=512M"
     },
     "scripts-descriptions": {
-        "serve": "開発用サーバ（http://127.0.0.1:8000）と Tailwind の watch を同時に起動する"
+        "serve": "開発用サーバ（http://127.0.0.1:8000）と Tailwind の watch を同時に起動する",
+        "stan": "PHPStan（level 8）で静的解析する"
     },
     "extra": {
         "relayer": {
             "structure_version": 5
         }
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2"
     }
 }

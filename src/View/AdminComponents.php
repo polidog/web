@@ -38,7 +38,8 @@ final class AdminComponents
         bool $withTaxonomy = true,
         ?string $deleteAction = null,
     ): Element {
-        $value = static fn (string $key, string $default = ''): string => isset($post[$key]) && null !== $post[$key]
+        // isset() は値が null のときも false になるので、null チェックは要らない。
+        $value = static fn (string $key, string $default = ''): string => isset($post[$key])
             ? (string) $post[$key]
             : $default;
 

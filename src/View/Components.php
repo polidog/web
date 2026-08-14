@@ -16,35 +16,43 @@ use Polidog\UsePhp\Runtime\Element;
  * が見るのが `src/Pages/` だけで、その外に置いた `.psx` はオートロードに
  * 乗らないため。部品はこの数個しかないので、JSX が使えない不便より
  * 「置き場所が素直」を取る。
+ *
+ * 受け取る配列は PostRepository が返す行そのもの。`.psx` は PHPStan の
+ * 検査対象に入らない（独自構文で PHP パーサが読めない）ので、ページから
+ * 渡された値が実際に検査されるのはこの境界。だから引数は
+ * `array<string, mixed>` ではなく行の shape で受ける。
+ *
+ * @phpstan-import-type ArchiveRow from \App\Service\PostRepository
+ * @phpstan-import-type NeighbourRow from \App\Service\PostRepository
+ * @phpstan-import-type PostListRow from \App\Service\PostRepository
  */
 final class Components
 {
     /**
      * 一覧の 1 件。Hugo の partials/articles/list_item.html 相当。
      *
-     * @param array<string, mixed> $post
+     * @param PostListRow $post
      */
     public static function postCard(array $post): Element
     {
-        $path = (string) $post['path'];
-        $publishedAt = $post['publishedAt'] ?? null;
+        $publishedAt = $post['publishedAt'];
 
         $children = [];
 
         if (null !== $publishedAt && '' !== $publishedAt) {
-            $children[] = self::date((string) $publishedAt);
+            $children[] = self::date($publishedAt);
         }
 
         $children[] = H::h2(
             className: 'mt-2 text-xl font-semibold tracking-tight text-gray-900 dark:text-white',
             children: H::a(
-                href: $path . '/',
+                href: $post['path'] . '/',
                 className: 'hover:text-sky-600 dark:hover:text-sky-400',
-                children: (string) $post['title'],
+                children: $post['title'],
             ),
         );
 
-        $excerpt = (string) ($post['excerpt'] ?? '');
+        $excerpt = $post['excerpt'] ?? '';
         if ('' !== $excerpt) {
             $children[] = H::p(
                 className: 'mt-3 text-sm leading-6 text-gray-600 dark:text-gray-400',
@@ -59,7 +67,7 @@ final class Components
     }
 
     /**
-     * @param list<array<string, mixed>> $posts
+     * @param list<PostListRow> $posts
      */
     public static function postList(array $posts): Element
     {
@@ -83,7 +91,7 @@ final class Components
      * 月をまたいで集計はしない — 同じ月がページをまたいで 2 回出るのは
      * Hugo と同じ挙動なので、そこは合わせる。
      *
-     * @param list<array<string, mixed>> $posts 新しい順に並んだ記事
+     * @param list<ArchiveRow> $posts 新しい順に並んだ記事
      */
     public static function archiveList(array $posts): Element
     {
@@ -94,11 +102,11 @@ final class Components
             );
         }
 
-        /** @var array<string, list<array<string, mixed>>> $byMonth */
+        /** @var array<string, list<ArchiveRow>> $byMonth */
         $byMonth = [];
         foreach ($posts as $post) {
             // publishedAt は 'Y-m-d H:i:s' の TEXT なので先頭 7 文字が年月。
-            $byMonth[\substr((string) $post['publishedAt'], 0, 7)][] = $post;
+            $byMonth[\substr($post['publishedAt'], 0, 7)][] = $post;
         }
 
         return H::div(
@@ -151,21 +159,21 @@ final class Components
     /**
      * アーカイブの 1 行。左にタイトル、右に日付。
      *
-     * @param array<string, mixed> $post
+     * @param ArchiveRow $post
      */
     public static function archiveItem(array $post): Element
     {
         return H::li(
             className: 'py-2',
             children: H::a(
-                href: (string) $post['path'] . '/',
+                href: $post['path'] . '/',
                 className: 'group flex items-center justify-between gap-4',
                 children: [
                     H::span(
                         className: 'text-gray-900 group-hover:text-sky-600 dark:text-white dark:group-hover:text-sky-400',
-                        children: (string) $post['title'],
+                        children: $post['title'],
                     ),
-                    self::date((string) $post['publishedAt']),
+                    self::date($post['publishedAt']),
                 ],
             ),
         );
@@ -264,17 +272,18 @@ final class Components
     /**
      * 記事詳細の「前の記事 / 次の記事」。
      *
-     * @param array{previous: null|array<string, mixed>, next: null|array<string, mixed>} $neighbours
+     * @param array{previous: null|NeighbourRow, next: null|NeighbourRow} $neighbours
      */
     public static function neighbourNav(array $neighbours): Element
     {
+        /** @param null|NeighbourRow $post */
         $card = static function (?array $post, string $label, bool $alignRight): Element {
             if (null === $post) {
                 return H::div();
             }
 
             return H::a(
-                href: (string) $post['path'] . '/',
+                href: $post['path'] . '/',
                 className: 'group flex flex-col rounded-lg border border-gray-200 p-4 transition-colors hover:border-sky-300 hover:bg-sky-50 dark:border-gray-700 dark:hover:border-sky-600 dark:hover:bg-sky-900/10'
                     . ($alignRight ? ' text-right' : ''),
                 children: [
@@ -284,7 +293,7 @@ final class Components
                     ),
                     H::span(
                         className: 'mt-1 text-base font-semibold text-gray-900 dark:text-white',
-                        children: (string) $post['title'],
+                        children: $post['title'],
                     ),
                 ],
             );

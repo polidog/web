@@ -47,6 +47,7 @@ vendor/bin/tehilim generate          # スキーマ → 型付きクライアン
 vendor/bin/tehilim migrate dev --name <slug>   # スキーマ差分からマイグレーション作成
 vendor/bin/tehilim migrate deploy    # 未適用のマイグレーションを適用
 vendor/bin/yaml-lint config/services.yaml
+composer stan                        # PHPStan（level 8）。エラー 0 が既定の状態
 ```
 
 ```bash
@@ -59,6 +60,12 @@ PHP 8.5 は `mise.toml` で固定。実行イメージは FrankenPHP（`Dockerfi
 自動テストは無い。代わりに **`bin/verify-urls.php` が回帰テストの役割**を持つ
 （20 年ぶんの URL を実際に叩いて期待どおりか見る）。ルーティングや URL 生成を
 触ったら必ず流すこと。
+
+`composer stan` は level 8 でエラー 0 の状態を保っている。**ただし `.psx` は
+検査されない** —— 独自構文で PHP パーサが読めず、PHPStan は既定で `.php` しか
+見ないため、`src/Pages/` からは同居する `route.php` / `middleware.php` だけが
+対象になる。ページの中身が守られるのは `src/Service/` と `src/View/` の
+シグネチャまでで、そこから先は型が効かない。だから境界の型を緩めないこと。
 
 ## アーキテクチャ
 
@@ -81,10 +88,36 @@ PHP 8.5 は `mise.toml` で固定。実行イメージは FrankenPHP（`Dockerfi
 ### 読みは SQL、書きは tehilim
 
 `App\Service\PostRepository`（読み）だけ素の PDO で生 SQL を書き、
-`App\Service\PostWriter`（書き）は tehilim を使う。tehilim の `include` は
-**orderBy を受け付けない**ので「このタグの記事を新しい順に 25 件」が
-1 クエリで書けないため。書き込み側はタグの張り替えが `set` 一発で済むので
-tehilim のほうが素直。この住み分けは意図的で、混ぜないこと。
+`App\Service\PostWriter`（書き）は tehilim を使う。書き込み側はタグの張り替えが
+`set` 一発で済むので tehilim のほうが素直。この住み分けは意図的で、混ぜないこと。
+
+読み側が tehilim に乗れないのは 3 か所だけだが、その 3 か所が主要導線にある:
+
+- **タグ・カテゴリ別の一覧**（`listByTag` / `listByCategory`）。tehilim の
+  `where` が解釈するのはスカラー演算子と AND/OR/NOT だけで
+  （`Query\WhereCompiler`）、Prisma の `tags: {some: {slug: ...}}` にあたる
+  **リレーションフィルタが無い**ため `post.findMany()` 側から絞れない。
+  逆にタグ側から `include` すると今度は `include` が **orderBy を受け付けない**
+  ので「新しい順に 25 件」が組めない。両方向とも塞がっている。
+- **`terms()`** の `GROUP BY … HAVING COUNT(*) > 0`。`count()` 以外の集約 API が無い。
+- **`listForAdmin`** の `ORDER BY COALESCE(publishedAt, updatedAt)`。
+  `orderBy` は「カラム => 方向」しか取れず式が書けない。
+
+残りは tehilim でも書けるが、上の 3 つがある限り 1 クラスに 2 つの流儀を
+混ぜる意味が無いので、読みは PDO で揃えてある。
+
+### 生 SQL の行に型を与えるのは PostRepository の中
+
+PDO は列の型を知らせてこないので、生 SQL の結果は放っておくと `mixed` のまま
+`.psx` まで流れる（そして `.psx` は PHPStan の検査対象外）。そこで
+`PostRepository` は SELECT ごとの形を `@phpstan-type`（`PostRow`・`PostListRow`
+など）で宣言し、`fetchAll()` / `fetchOne()` に渡すマッパで実際にその形へ
+組み直している。**宣言だけ足してマッパを通さないと、静的にも実行時にも何も
+保証されない**ので、SELECT の列を増減したら両方直すこと。
+
+日時列が `\DateTimeImmutable` ではなく `string` なのは SQLite の TEXT が
+そのまま返るため。tehilim の `PostRowScalar`（`src/Tehilim/Model/Post.php`）は
+そこが `\DateTimeImmutable` で **shape が違う**ので、import して流用しないこと。
 
 ### 保存は必ず PostWriter を通す
 

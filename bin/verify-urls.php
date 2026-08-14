@@ -38,10 +38,26 @@ if (isset($options['help'])) {
     exit(0);
 }
 
-$base = \rtrim((string) ($options['base'] ?? 'http://127.0.0.1:8000'), '/');
-$publicDir = \rtrim((string) ($options['public'] ?? \dirname(__DIR__) . '/../website/public'), '/');
-$limit = isset($options['limit']) ? (int) $options['limit'] : 0;
-$show = isset($options['show']) ? (int) $options['show'] : 40;
+/**
+ * getopt() の値は「文字列」とは限らない —— 同じオプションが 2 回渡されると
+ * 配列に、値なしオプションでは false になる。ここではどれも 1 個の値しか
+ * 意味を持たないので、文字列に落として扱う。
+ *
+ * @param array<string, false|list<string>|string> $options
+ */
+$option = static function (array $options, string $name, string $default): string {
+    $value = $options[$name] ?? null;
+    if (\is_array($value)) {
+        $value = $value[0] ?? null;
+    }
+
+    return \is_string($value) ? $value : $default;
+};
+
+$base = \rtrim($option($options, 'base', 'http://127.0.0.1:8000'), '/');
+$publicDir = \rtrim($option($options, 'public', \dirname(__DIR__) . '/../website/public'), '/');
+$limit = (int) $option($options, 'limit', '0');
+$show = (int) $option($options, 'show', '40');
 
 if (!\is_dir($publicDir)) {
     \fwrite(\STDERR, "public ディレクトリが見つかりません: {$publicDir}\n");
@@ -62,15 +78,41 @@ $statusByPath = [];
 $knownTerms = [];
 
 if (\is_file($databasePath)) {
-    $pdo = new PDO('sqlite:' . $databasePath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    foreach ($pdo->query('SELECT path, status FROM "Post"') as $row) {
+    $pdo = new PDO('sqlite:' . $databasePath, null, null, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+
+    /**
+     * ERRMODE_EXCEPTION なので query() が false を返すことは無いが、
+     * 静的解析からは属性が見えないのでここで潰しておく。
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    $rows = static function (PDO $pdo, string $sql): array {
+        $statement = $pdo->query($sql);
+        if (false === $statement) {
+            throw new RuntimeException('Failed to query: ' . $sql);
+        }
+
+        $out = [];
+        foreach ($statement->fetchAll() as $row) {
+            if (\is_array($row)) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    };
+
+    foreach ($rows($pdo, 'SELECT path, status FROM "Post"') as $row) {
         $statusByPath[(string) $row['path']] = (string) $row['status'];
     }
-    foreach ($pdo->query('SELECT slug FROM "Tag"') as $row) {
-        $knownTerms['/tags/' . $row['slug']] = true;
+    foreach ($rows($pdo, 'SELECT slug FROM "Tag"') as $row) {
+        $knownTerms['/tags/' . (string) $row['slug']] = true;
     }
-    foreach ($pdo->query('SELECT slug FROM "Category"') as $row) {
-        $knownTerms['/categories/' . $row['slug']] = true;
+    foreach ($rows($pdo, 'SELECT slug FROM "Category"') as $row) {
+        $knownTerms['/categories/' . (string) $row['slug']] = true;
     }
 }
 

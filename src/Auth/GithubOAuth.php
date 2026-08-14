@@ -11,7 +11,6 @@ use Polidog\Relayer\Auth\Identity;
 use Polidog\Relayer\Auth\SessionStorage;
 use Polidog\Relayer\Http\Client\HttpClient;
 use Polidog\Relayer\Http\Client\HttpClientException;
-use RuntimeException;
 
 /**
  * 管理画面のログイン。GitHub の Authorization Code フローを素で実装する。
@@ -21,6 +20,8 @@ use RuntimeException;
  * ライブラリが引き受けてくれる複雑さ（複数プロバイダ・リフレッシュ・
  * PKCE・トークン保管）をこのサイトが 1 つも使わないため。
  * CSRF 対策の state だけは自前で持つ。
+ *
+ * @phpstan-import-type UserRow from \App\Tehilim\Model\User
  */
 final class GithubOAuth
 {
@@ -87,9 +88,9 @@ final class GithubOAuth
 
         $user = $this->upsertUser($profile);
         $identity = new Identity(
-            id: (int) $user['id'],
-            displayName: (string) ($user['name'] ?? $user['login']),
-            roles: [(string) $user['role']],
+            id: $user['id'],
+            displayName: $user['name'] ?? $user['login'],
+            roles: [$user['role']],
         );
 
         $this->authenticator->login($identity);
@@ -193,11 +194,11 @@ final class GithubOAuth
     /**
      * @param array{id: int, login: string, name: null|string, avatar_url: null|string} $profile
      *
-     * @return array<string, mixed>
+     * @return UserRow
      */
     private function upsertUser(array $profile): array
     {
-        $user = $this->db->user->upsert([
+        return $this->db->user->upsert([
             'where' => ['githubId' => $profile['id']],
             'insert' => [
                 'githubId' => $profile['id'],
@@ -213,11 +214,5 @@ final class GithubOAuth
                 'avatarUrl' => $profile['avatar_url'],
             ],
         ]);
-
-        if (!isset($user['id'])) {
-            throw new RuntimeException('Failed to persist the GitHub user.');
-        }
-
-        return $user;
     }
 }
