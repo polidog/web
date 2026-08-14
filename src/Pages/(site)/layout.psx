@@ -10,8 +10,21 @@ use Polidog\UsePhp\Html\H;
 use Polidog\UsePhp\Runtime\Element;
 
 /**
- * 公開側の外殻。Hugo テーマ（website/themes/polidog）のヘッダ・フッタを
- * 移植したもので、Tailwind のクラスもそのまま引き継いでいる。
+ * 公開側の外殻。
+ *
+ * 罫線を持たない。ヘッダ・本文・フッタの区切りは余白と文字の濃さだけで
+ * 付ける（`Components` 側も同じ方針で、`border-*` はほぼ出てこない）。
+ * 幅は `max-w-measure`（44rem）で、外殻・一覧・記事本文すべて同じ measure に
+ * 揃えてある——読み物として 1 本の柱に見せたいので、ページごとに幅を
+ * 変えない。
+ *
+ * 等幅（`font-mono`）はサイト名・日付・年号・ページ番号にだけ使う。
+ * 「識別子と時間は等幅」という 1 本の規則にしてあるので、それ以外の語には
+ * 使わないこと。
+ *
+ * 色は `assets/tailwind.css` の CSS 変数で切り替わるので `dark:` は書かない
+ * （テーマトグルのアイコン差し替えだけは色ではなく表示の切り替えなので
+ * `dark:inline` / `dark:hidden` を使っている——例外はここだけ）。
  *
  * ダークモードの切り替えとモバイルメニューの開閉は /assets/site.js。
  * 初期テーマの反映だけは描画前に走らせる必要があるので、SiteDocument が
@@ -31,32 +44,19 @@ final class RootLayout extends LayoutComponent
     public function render(): Element
     {
         return (
-            <div className="w-full">
-                <header className="relative">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex min-h-full w-full flex-col">
+                <header>
+                    <div className="mx-auto w-full max-w-measure px-5">
                         {$this->headerBar()}
                         {$this->mobileMenu()}
                     </div>
                 </header>
-                <main>
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+                <main className="flex-1">
+                    <div className="mx-auto w-full max-w-measure px-5 pb-28 pt-6">
                         {$this->getChildren()}
                     </div>
                 </main>
-                <footer className="border-t border-gray-200 dark:border-gray-800 mt-16">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-                        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-                            <div className="flex gap-6 text-sm font-medium text-gray-800 dark:text-gray-200">
-                                <a href="/about" className="hover:text-gray-900 dark:hover:text-white">About</a>
-                                <a href="/tech-tags" className="hover:text-gray-900 dark:hover:text-white">Tags</a>
-                                <a href="/index.xml" className="hover:text-gray-900 dark:hover:text-white">RSS</a>
-                            </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {\sprintf('Copyright © %s %s. All rights reserved.', \date('Y'), $this->site->title)}
-                            </p>
-                        </div>
-                    </div>
-                </footer>
+                {$this->footer()}
             </div>
         );
     }
@@ -64,51 +64,92 @@ final class RootLayout extends LayoutComponent
     private function headerBar(): Element
     {
         return (
-            <div className="flex items-center justify-between py-6">
-                <a href="/" className="text-2xl font-bold text-gray-900 dark:text-white">{$this->site->title}</a>
-                <div className="ml-auto flex items-center gap-6">
-                    <nav className="hidden md:block">
-                        <ul className="flex items-center gap-8">
-                            {\array_map(self::navLink(...), self::NAVIGATION)}
-                        </ul>
-                    </nav>
-                    <div className="hidden md:block h-5 w-px bg-gray-300 dark:bg-gray-700"></div>
-                    <div className="flex gap-4 items-center">
-                        <button
-                            id="theme-toggle"
-                            type="button"
-                            className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                            aria-label="ダークモード切替"
-                        >
-                            <span className="hidden dark:inline">☀</span>
-                            <span className="inline dark:hidden">☾</span>
-                        </button>
-                        <a
-                            href={\sprintf('https://github.com/%s', $this->site->author)}
-                            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                            target="_blank"
-                            rel="noopener"
-                        >GitHub</a>
-                    </div>
+            <div className="flex items-baseline justify-between py-10">
+                <a
+                    href="/"
+                    className="font-mono text-[0.9375rem] tracking-[0.14em] text-ink transition-colors hover:text-accent"
+                >{$this->site->title}</a>
+
+                {$this->desktopNav()}
+
+                <div className="flex items-baseline gap-5 md:hidden">
+                    {$this->themeToggle()}
                     <button
                         id="mobile-menu-button"
                         type="button"
-                        className="md:hidden rounded-md p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                        aria-label="メニュー"
+                        className="text-lg leading-none text-muted transition-colors hover:text-ink"
+                        aria-label="メニューを開く"
+                        aria-controls="mobile-menu"
+                        aria-expanded="false"
                     >☰</button>
                 </div>
             </div>
         );
     }
 
+    /**
+     * ナビの children は先に 1 本の配列に均しておく。usePHP が平坦化するのは
+     * 「子が配列 1 つだけ」のときで、配列と要素を並べるとネストした配列が
+     * そのまま渡り、レンダラが Element|string|null を期待して落ちる。
+     */
+    private function desktopNav(): Element
+    {
+        $items = \array_map(self::navLink(...), self::NAVIGATION);
+        $items[] = H::a(
+            href: \sprintf('https://github.com/%s', $this->site->author),
+            className: 'text-[0.8125rem] text-muted transition-colors hover:text-ink',
+            target: '_blank',
+            rel: 'noopener',
+            children: 'GitHub',
+        );
+        $items[] = $this->themeToggle();
+
+        return H::nav(className: 'hidden items-baseline gap-7 md:flex', children: $items);
+    }
+
+    private function themeToggle(): Element
+    {
+        return (
+            <button
+                id="theme-toggle"
+                type="button"
+                className="text-sm leading-none text-muted transition-colors hover:text-ink"
+                aria-label="表示テーマを切り替える"
+            >
+                <span className="hidden dark:inline">☀</span>
+                <span className="inline dark:hidden">☾</span>
+            </button>
+        );
+    }
+
     private function mobileMenu(): Element
     {
         return (
-            <div id="mobile-menu" className="md:hidden hidden">
-                <div className="space-y-1 px-2 pb-3 pt-2">
+            <div id="mobile-menu" className="hidden pb-6 md:hidden">
+                <div className="flex flex-col gap-4">
                     {\array_map(self::mobileLink(...), self::NAVIGATION)}
                 </div>
             </div>
+        );
+    }
+
+    private function footer(): Element
+    {
+        return (
+            <footer>
+                <div className="mx-auto w-full max-w-measure px-5 pb-16">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
+                        <nav className="flex gap-6 text-[0.8125rem] text-muted">
+                            <a href="/about" className="transition-colors hover:text-ink">About</a>
+                            <a href="/tech-tags" className="transition-colors hover:text-ink">Tags</a>
+                            <a href="/index.xml" className="transition-colors hover:text-ink">RSS</a>
+                        </nav>
+                        <p className="font-mono text-xs tracking-wide text-muted">
+                            {\sprintf('© %s %s', \date('Y'), $this->site->title)}
+                        </p>
+                    </div>
+                </div>
+            </footer>
         );
     }
 
@@ -118,12 +159,10 @@ final class RootLayout extends LayoutComponent
     private static function navLink(array $item): Element
     {
         return (
-            <li>
-                <a
-                    href={$item['href']}
-                    className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-                >{$item['label']}</a>
-            </li>
+            <a
+                href={$item['href']}
+                className="text-[0.8125rem] text-muted transition-colors hover:text-ink"
+            >{$item['label']}</a>
         );
     }
 
@@ -135,7 +174,7 @@ final class RootLayout extends LayoutComponent
         return (
             <a
                 href={$item['href']}
-                className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                className="text-base text-muted transition-colors hover:text-ink"
             >{$item['label']}</a>
         );
     }

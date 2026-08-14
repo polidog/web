@@ -26,11 +26,16 @@
   }
 
   on('theme-toggle', toggleTheme);
-  on('mobile-menu-button', function () {
+  on('mobile-menu-button', function (event) {
     var menu = document.getElementById('mobile-menu');
-    if (menu) {
-      menu.classList.toggle('hidden');
+    if (!menu) {
+      return;
     }
+
+    var open = !menu.classList.toggle('hidden');
+    // ボタンの aria-expanded は開閉に合わせて書き換える。HTML に固定値で
+    // 置いたままだと、支援技術には常に閉じていると伝わる。
+    event.currentTarget.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
   /*

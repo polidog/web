@@ -13,6 +13,9 @@ use Polidog\UsePhp\Runtime\Element;
  *
  * 20 年ぶんの記事があるサイトなので、404 に飛ぶ人はたいてい古いリンクを
  * 踏んでいる。行き止まりにせず、タグ一覧とアーカイブへ誘導する。
+ *
+ * ステータス番号は一覧の年号マーカーと同じ組み方（大きく淡い等幅）にして
+ * ある。中央揃えにしないのも一覧と揃えるため。
  */
 final class ErrorPage extends ErrorPageComponent
 {
@@ -21,23 +24,29 @@ final class ErrorPage extends ErrorPageComponent
         $status = $this->getStatusCode();
 
         return (
-            <div className="mx-auto max-w-2xl py-16 text-center">
-                <p className="text-base font-semibold text-sky-600 dark:text-sky-400">{(string) $status}</p>
-                <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+            <div className="py-16">
+                <p className="font-mono text-5xl font-light leading-none tracking-tight text-faint">
+                    {(string) $status}
+                </p>
+                <h1 className="mt-8 text-[1.75rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]">
                     {$this->headline($status)}
                 </h1>
-                <p className="mt-6 text-base text-gray-600 dark:text-gray-400">
+                <p className="mt-5 text-[0.9375rem] leading-relaxed text-muted">
                     {$this->description($status)}
                 </p>
-                <div className="mt-10 flex items-center justify-center gap-4">
+                <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3">
                     <a
                         href="/"
-                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-                    >トップへ</a>
+                        className="text-[0.8125rem] text-muted transition-colors hover:text-accent"
+                    >トップへ →</a>
                     <a
                         href="/archives"
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                    >アーカイブを見る</a>
+                        className="text-[0.8125rem] text-muted transition-colors hover:text-accent"
+                    >アーカイブを見る →</a>
+                    <a
+                        href="/tech-tags"
+                        className="text-[0.8125rem] text-muted transition-colors hover:text-accent"
+                    >タグから探す →</a>
                 </div>
             </div>
         );

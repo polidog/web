@@ -33,11 +33,11 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closu
         );
 
         return (
-            <article className="mx-auto max-w-3xl">
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+            <article>
+                <h1 className="text-[1.875rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2.25rem]">
                     {(string) $page['title']}
                 </h1>
-                <div className="mt-10 prose prose-slate max-w-none dark:prose-invert prose-a:text-sky-600 dark:prose-a:text-sky-400">
+                <div className="prose mt-12">
                     {HtmlToElement::convert((string) $page['html'])}
                 </div>
             </article>

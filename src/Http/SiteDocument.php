@@ -89,7 +89,9 @@ final class SiteDocument implements DocumentInterface
         $this->title = \sprintf('%d %s', $statusCode, $message);
 
         return $this->document(\sprintf(
-            '<main class="mx-auto max-w-3xl px-4 py-24 text-center"><h1 class="text-5xl font-bold">%d</h1><p class="mt-4 text-gray-600 dark:text-gray-400">%s</p><p class="mt-8"><a class="text-sky-600 hover:underline" href="/">トップへ戻る</a></p></main>',
+            '<main class="mx-auto max-w-measure px-5 py-32"><p class="font-mono text-5xl font-light text-faint">%d</p>'
+            . '<p class="mt-6 text-lg text-ink">%s</p>'
+            . '<p class="mt-10"><a class="text-accent underline underline-offset-4 hover:text-accent-strong" href="/">トップへ戻る</a></p></main>',
             $statusCode,
             $this->esc($message),
         ));
@@ -148,7 +150,7 @@ final class SiteDocument implements DocumentInterface
             <head>
                 {$headHtml}
             </head>
-            <body class="flex min-h-full flex-col bg-white text-gray-900 dark:bg-slate-900 dark:text-gray-100">
+            <body class="flex min-h-full flex-col bg-surface font-sans text-ink">
             {$content}
             <script src="/assets/site.js" defer></script>
             </body>

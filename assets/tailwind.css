@@ -3,14 +3,87 @@
 @tailwind utilities;
 
 /*
- * 記事本文のコードブロック。Hugo 時代は chroma がサーバ側で色を付けて
- * いたが、こちらは CommonMark が `<pre><code class="language-xxx">` を
- * 出すだけなので、色は付けずに読みやすさだけ整える。言語別の着色が
- * 欲しくなったら prism を足せばよい（class 名は互換）。
+ * 色は全部ここで決まる。tailwind.config.js の colors がこの変数を参照して
+ * いるので、`.dark` で変数ごと差し替えれば全ページのダークモードが効く
+ * （ページ側に `dark:` を書かなくて済む）。
+ *
+ * コントラストは light / dark とも本文 15:1 前後、muted 5.8:1 以上（本文
+ * サイズの AA）を確保。
+ *
+ * faint は年号マーカーのような**大きい数字専用**で、light 3.4:1 / dark 3.6:1。
+ * 大サイズ文字の下限 3:1 は満たすが本文サイズの 4.5:1 には届かないので、
+ * 小さい字には使わないこと（そこは muted）。
+ */
+@layer base {
+  :root {
+    --color-surface: 252 252 250;
+    --color-raised: 237 237 230;
+    --color-ink: 23 23 27;
+    --color-muted: 99 99 107;
+    --color-faint: 138 138 131;
+    --color-hairline: 228 228 222;
+    --color-accent: 27 73 101;
+    --color-accent-strong: 15 46 66;
+  }
+
+  .dark {
+    --color-surface: 18 19 22;
+    --color-raised: 30 31 36;
+    --color-ink: 233 233 229;
+    --color-muted: 148 148 156;
+    --color-faint: 106 107 114;
+    --color-hairline: 42 43 48;
+    --color-accent: 143 187 212;
+    --color-accent-strong: 184 214 232;
+  }
+
+  body {
+    /* 日本語は行間を広めに取らないと詰まって見える。 */
+    line-height: 1.85;
+  }
+
+  /* 見出しは太らせず、字間を詰めてサイズで見せる。 */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+  }
+
+  /*
+   * 日付と数字は等幅かつ tabular。20 年ぶんの日付が縦に揃うのは、
+   * 一覧が「月.日」だけを繰り返して年を年号マーカーに預けているから。
+   */
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* キーボード操作でどこにいるか分かること。罫線を削ったぶんここは太く。 */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/*
+ * 記事本文。Hugo 時代は chroma がサーバ側で色を付けていたが、こちらは
+ * CommonMark が `<pre><code class="language-xxx">` を出すだけなので、色は
+ * 付けずに読みやすさだけ整える。言語別の着色が欲しくなったら prism を
+ * 足せばよい（class 名は互換）。
  */
 @layer components {
   .prose pre {
-    @apply overflow-x-auto rounded-lg bg-slate-900 p-4 text-sm text-slate-100;
+    @apply overflow-x-auto rounded bg-raised p-5 text-[0.8125rem] leading-relaxed text-ink;
   }
 
   .prose pre code {
@@ -18,7 +91,7 @@
   }
 
   .prose :not(pre) > code {
-    @apply rounded bg-gray-100 px-1.5 py-0.5 text-[0.875em] text-sky-700 dark:bg-gray-800 dark:text-sky-300;
+    @apply rounded bg-raised px-1.5 py-0.5 text-[0.875em] font-normal text-ink;
   }
 
   .prose :not(pre) > code::before,
@@ -28,12 +101,12 @@
 
   /* 20 年ぶんの記事には幅指定のない大きな画像が多い。はみ出させない。 */
   .prose img {
-    @apply h-auto max-w-full rounded-lg;
+    @apply h-auto max-w-full rounded;
   }
 
   .prose iframe,
   .prose .embed iframe {
-    @apply w-full rounded-lg;
+    @apply w-full rounded;
   }
 
   .embed-youtube,
