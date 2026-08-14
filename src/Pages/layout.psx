@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Layouts;
+
+use Polidog\Relayer\Router\Layout\LayoutComponent;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+final class RootLayout extends LayoutComponent
+{
+    public function render(): Element
+    {
+        return (
+            <div>
+                <header>
+                    <a href="/">Relayer App</a>
+                </header>
+                <main>{$this->getChildren()}</main>
+            </div>
+        );
+    }
+}
