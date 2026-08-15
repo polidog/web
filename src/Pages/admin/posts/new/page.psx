@@ -54,11 +54,13 @@ return function (
             : ['path' => \sprintf('/blog/%s/', \date('Y/m'))];
 
         return (
-            <div className="space-y-6">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">新しい記事</h1>
-                {AdminComponents::postForm(
+            <div>
+                {AdminComponents::breadcrumb('/admin/posts', '記事', '新規')}
+                {AdminComponents::editor(
                     saveAction: $save,
                     post: $post,
+                    indexHref: '/admin/posts',
+                    indexLabel: '記事一覧',
                     tags: isset($submitted['tags']) ? [(string) $submitted['tags']] : [],
                     categories: isset($submitted['categories']) ? [(string) $submitted['categories']] : [],
                     errors: $errors,

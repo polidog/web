@@ -24,6 +24,12 @@
     --color-hairline: 228 228 222;
     --color-accent: 27 73 101;
     --color-accent-strong: 15 46 66;
+    /*
+     * 管理画面の通知だけが使う意味色。公開側には出てこない（読み物に
+     * 赤と緑は要らない）。面ではなく文字に載せるので 4.5:1 を満たす濃さで。
+     */
+    --color-danger: 175 32 32;
+    --color-success: 22 101 52;
   }
 
   .dark {
@@ -35,6 +41,8 @@
     --color-hairline: 42 43 48;
     --color-accent: 143 187 212;
     --color-accent-strong: 184 214 232;
+    --color-danger: 240 138 138;
+    --color-success: 126 206 148;
   }
 
   body {
@@ -118,5 +126,35 @@
   .embed-youtube iframe,
   .embed-speakerdeck iframe {
     @apply absolute left-0 top-0 h-full w-full border-0;
+  }
+
+  /*
+   * 管理画面のエディタ。本文とプレビューを横に並べるかどうかは、フォームの
+   * `data-preview` を admin.js が書き換えて切り替える。
+   *
+   * JS からクラスを足さないのは、Tailwind が `src/**` しかスキャンしないため
+   * ——JS の中にだけ現れるクラス名は CSS に出力されず、切り替えが無言で
+   * 効かなくなる。属性セレクタなら Tailwind の生成物に依存しない。
+   *
+   * 横並びは lg 以上だけ。狭い画面では本文の下にプレビューが積まれる。
+   */
+  .editor-panes {
+    @apply grid gap-6;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-preview='off'] .editor-preview {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    [data-preview='on'] .editor-panes {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  /* プレビューは記事の見た目を確かめる場所なので、本文と同じ prose で組む。 */
+  .editor-preview .prose {
+    @apply max-w-none text-[0.9375rem];
   }
 }

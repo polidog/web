@@ -61,27 +61,17 @@ return function (
 
     return function () use ($page, $save, $delete, $saved, &$errors, &$submitted): Element {
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">ページを編集</h1>
-                    <a
-                        href="/admin/pages"
-                        className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                    >一覧に戻る</a>
-                </div>
-
-                {$saved
-                    ? <p className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
-                        保存しました。
-                    </p>
-                    : null}
-
-                {AdminComponents::postForm(
+            <div>
+                {AdminComponents::breadcrumb('/admin/pages', 'ページ', '編集')}
+                {AdminComponents::editor(
                     saveAction: $save,
                     post: [] !== $submitted ? $submitted + $page : $page,
+                    indexHref: '/admin/pages',
+                    indexLabel: 'ページ一覧',
                     errors: $errors,
                     withTaxonomy: false,
                     deleteAction: $delete,
+                    saved: $saved,
                 )}
             </div>
         );
