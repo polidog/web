@@ -45,6 +45,13 @@ else
     echo "bin/dev.sh: node_modules が無いので Tailwind の watch は起動しません（npm install してください）" >&2
 fi
 
+# highlight.js は node_modules からの複製なので watch は要らない。まだ
+# 置かれていないときだけ 1 回コピーする（無いと記事のコードブロックが
+# 無着色のままになり、CSS の watch と違って原因が見えにくい）。
+if [ ! -f public/assets/hljs/highlight.min.js ] && [ -d node_modules/@highlightjs/cdn-assets ]; then
+    bash bin/build-hljs.sh
+fi
+
 php -S "$addr" -t public &
 server_pid=$!
 

@@ -1,6 +1,11 @@
 /vendor/
 /var/
 /.git/
+# フロントエンドのビルドは css ステージで完結する。実行ステージの `COPY . .`
+# でローカルの node_modules を運び込むと、Node を入れないはずのイメージに
+# 数十 MB が紛れ込む。CSS と hljs は `COPY --from=css` で受け取る。
+/node_modules/
+/public/assets/hljs/
 /public/usephp.js
 /.env.local
 /.env.*.local
