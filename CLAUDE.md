@@ -209,6 +209,44 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
 日本語の Web フォントは数 MB になり、CDN キャッシュ前提のコスト構造と噛み合わ
 ないので**書体はシステムスタック**。個性は級差・字間・行間で付けている。
 
+### 管理画面も同じ言語で書く
+
+`/admin` は公開側と**同じトークン**（`surface` / `raised` / `ink` / `muted` /
+`faint` / `hairline` / `accent`）だけを使い、`dark:` は 1 つも書かない。
+ロゴ・ナビ・日付・件数の組み方も公開側に揃えてある。素の Tailwind パレット
+（`gray-*` / `sky-*` / `slate-*`）を持ち込まないこと —— 変数と併走させると
+ダークモードの切り替え点が 2 系統に割れる。
+
+公開側の規約からわざと外しているのは 3 点だけで、どれも理由がある:
+
+- **入力欄には罫線を引く**（`border-hairline` 1 本まで）。当たり判定が
+  見えないフォームは使えない。面で囲うのはエディタの本文とプレビューだけ。
+- **本文欄は等幅。** 扱うのが Markdown のソースだから（公開側の「等幅は
+  時間と数だけ」は組版の規則で、ソースコードはその外）。
+- **幅は `max-w-[72rem]`。** エディタが 2 ペインに開くため。公開側の
+  `max-w-measure` は読み物の幅なので、そのままでは足りない。
+
+通知の赤と緑（`danger` / `success`）は管理画面専用のトークン。公開側には
+出てこない。
+
+### エディタ（`AdminComponents::editor()`）
+
+サーバが出すのは素の `<form>` だけで、JS との接続は**すべて data 属性**
+（`data-editor` / `data-editor-body` / `data-md` など）。挙動は
+`public/assets/admin.js` にあり、読み込むのは `AdminLayout` だけなので
+公開側のページには 1 バイトも増えない。
+
+- **プレビューは `/admin/preview` に投げる。** ブラウザ側に Markdown
+  パーサを置かない —— 保存時と変換結果がずれると「プレビューでは
+  正しかったのに」が起きる。変換は常にサーバの `MarkdownRenderer` 1 本。
+- **プレビューの開閉は `data-preview` 属性の書き換えでやる。** JS から
+  クラスを足してはいけない。Tailwind は `src/**` しかスキャンしないので、
+  JS の中にだけ現れるクラスは CSS に出力されず、無言で効かなくなる。
+  切り替えの CSS は `assets/tailwind.css` の `.editor-panes`。
+- **本文への挿入は `execCommand('insertText')` を通す。** deprecated だが、
+  textarea の undo 履歴に残る挿入手段はこれしかない。`value` を直接
+  書き換えると Ctrl+Z で戻せなくなる。
+
 ## 環境変数
 
 `.env` がモード切り替えを担う。`APP_ENV=dev` は `.psx` のオンザフライ
@@ -242,6 +280,11 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
   `App\Auth\AdminUserProvider` を `Polidog\Relayer\Auth\UserProvider` に
   alias してあるのがそれ。外すとログインだけでなく `#[Auth]` も
   `requireAuth()` も動かなくなる。
+- **`route.php` には CSRF 検証が入らない。** 自動で守られるのは
+  `$ctx->action()` のフォームだけ。副作用のある API を足すなら、
+  `CsrfToken::validate()` を自分で呼ぶこと（`admin/media/upload/route.php`
+  がその形で、トークンはエディタのフォームに埋まっているものを JS が
+  そのまま送っている）。
 - **`PageContext::metadata()` は使わない。** 既定の `HtmlDocument` にしか届かず、
   このアプリは canonical のために `SiteDocument` に差し替えている。
   head の設定は `App\Service\PageMeta` を通す。

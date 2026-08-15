@@ -44,11 +44,13 @@ return function (
 
     return function () use ($save, &$errors, &$submitted): Element {
         return (
-            <div className="space-y-6">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">新しいページ</h1>
-                {AdminComponents::postForm(
+            <div>
+                {AdminComponents::breadcrumb('/admin/pages', 'ページ', '新規')}
+                {AdminComponents::editor(
                     saveAction: $save,
                     post: [] !== $submitted ? $submitted : ['path' => '/'],
+                    indexHref: '/admin/pages',
+                    indexLabel: 'ページ一覧',
                     errors: $errors,
                     withTaxonomy: false,
                 )}

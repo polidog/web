@@ -26,14 +26,12 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Reques
         $list = $posts->listForAdmin('page', $page);
 
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">ページ</h1>
-                    <a
-                        href="/admin/pages/new"
-                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-                    >新しいページ</a>
-                </div>
+            <div>
+                {AdminComponents::pageHeader(
+                    'ページ',
+                    \sprintf('全 %d 件', $list->total),
+                    [H::a(href: '/admin/pages/new', className: AdminComponents::BUTTON, children: '新しいページ')],
+                )}
                 {AdminComponents::postTable($list, '/admin/pages')}
                 {AdminComponents::adminPagination($list, '/admin/pages')}
             </div>

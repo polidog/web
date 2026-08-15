@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Auth\AdminUserProvider;
 use App\Service\PageMeta;
 use App\Support\PageCache;
+use App\View\AdminComponents;
 use Polidog\Relayer\Auth\AuthenticatorInterface;
 use Polidog\Relayer\Router\Component\PageContext;
 use Polidog\UsePhp\Html\H;
@@ -49,30 +50,25 @@ return function (
     });
 
     return function () use ($login, $configured, &$failed, &$email): Element {
-        $inputClass = 'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm '
-            . 'focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 '
-            . 'dark:border-gray-600 dark:bg-slate-700 dark:text-white';
-        $labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300';
-
         return (
-            <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-slate-800">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">管理画面にログイン</h1>
+            <div className="mx-auto max-w-sm pt-16">
+                <h1 className="text-[1.375rem] font-semibold tracking-tight text-ink">管理画面にログイン</h1>
 
                 {$failed
-                    ? <p className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
-                        メールアドレスかパスワードが違います。
-                    </p>
+                    ? <div className="mt-6">
+                        {AdminComponents::notice('error', 'メールアドレスかパスワードが違います。')}
+                    </div>
                     : null}
 
                 {$configured
                     ? null
-                    : <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                        ADMIN_EMAIL と ADMIN_PASSWORD_HASH が設定されていません。
-                    </p>}
+                    : <div className="mt-6">
+                        {AdminComponents::notice('warn', 'ADMIN_EMAIL と ADMIN_PASSWORD_HASH が設定されていません。')}
+                    </div>}
 
-                <form action={$login} method="post" className="mt-6 space-y-5">
+                <form action={$login} method="post" className="mt-8 flex flex-col gap-5">
                     <label className="block">
-                        <span className={$labelClass}>メールアドレス</span>
+                        <span className={AdminComponents::LABEL}>メールアドレス</span>
                         <input
                             type="email"
                             name="email"
@@ -80,23 +76,22 @@ return function (
                             required={true}
                             autocomplete="username"
                             autofocus={true}
-                            className={$inputClass}
+                            className={'mt-1.5 ' . AdminComponents::INPUT}
                         />
                     </label>
                     <label className="block">
-                        <span className={$labelClass}>パスワード</span>
+                        <span className={AdminComponents::LABEL}>パスワード</span>
                         <input
                             type="password"
                             name="password"
                             required={true}
                             autocomplete="current-password"
-                            className={$inputClass}
+                            className={'mt-1.5 ' . AdminComponents::INPUT}
                         />
                     </label>
-                    <button
-                        type="submit"
-                        className="w-full rounded-md bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-                    >ログイン</button>
+                    <button type="submit" className={AdminComponents::BUTTON . ' mt-1 w-full py-3'}>
+                        ログイン
+                    </button>
                 </form>
             </div>
         );

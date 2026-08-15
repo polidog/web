@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Layouts;
 
+use App\Http\SiteDocument;
+use App\Support\SiteConfig;
 use Polidog\Relayer\Auth\AuthenticatorInterface;
+use Polidog\Relayer\Http\Request;
 use Polidog\Relayer\Router\Layout\LayoutComponent;
 use Polidog\UsePhp\Html\H;
 use Polidog\UsePhp\Runtime\Element;
@@ -14,8 +17,16 @@ use Polidog\UsePhp\Runtime\Element;
  * `(site)` ルートグループに閉じ込めてある（グループは URL セグメントを
  * 増やさないので、移動しても既存 URL は 1 本も変わらない）。
  *
+ * 別系統ではあるが**見た目は公開側と地続き**にする。ロゴは同じ等幅・同じ
+ * 字間、ナビも同じ級と濃さ、色は CSS 変数だけ（`dark:` を書かない）。
+ * 違うのは幅だけで、エディタが 2 ペインに開くぶんこちらは広く取っている。
+ *
  * レイアウトは認証ガードの対象外なので、ここではログイン状態を「表示に
  * 使うだけ」。実際のガードは各ページの `requireAuth()` が行う。
+ *
+ * admin.js の読み込みもここでやる。レイアウトの render() は Document の
+ * render() より先に走る（AppRouter::renderPageInternal）ので、ここで
+ * addHeadHtml しても間に合う。公開側のページには足さない。
  */
 final class AdminLayout extends LayoutComponent
 {
@@ -27,54 +38,126 @@ final class AdminLayout extends LayoutComponent
         ['href' => '/admin/media', 'label' => '画像'],
     ];
 
-    public function __construct(private readonly ?AuthenticatorInterface $auth = null) {}
+    public function __construct(
+        private readonly SiteConfig $site,
+        private readonly SiteDocument $document,
+        private readonly Request $request,
+        private readonly ?AuthenticatorInterface $auth = null,
+    ) {}
 
     public function render(): Element
     {
+        $this->document->addHeadHtml('<script src="/assets/admin.js" defer></script>');
+
         $user = $this->auth?->user();
 
         return (
-            <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-900">
-                <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-800">
-                    <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-4">
-                        <a href="/admin" className="text-lg font-bold text-gray-900 dark:text-white">管理画面</a>
-                        {null !== $user
-                            ? <nav className="flex items-center gap-4">
-                                {\array_map(self::navLink(...), self::NAVIGATION)}
-                            </nav>
-                            : null}
-                        <div className="ml-auto flex items-center gap-4 text-sm">
-                            <a
-                                href="/"
-                                className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                                target="_blank"
-                                rel="noopener"
-                            >サイトを見る</a>
-                            {null !== $user
-                                ? <a
-                                    href="/admin/logout"
-                                    className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                                >{\sprintf('%s / ログアウト', $user->displayName)}</a>
-                                : null}
-                        </div>
+            <div className="flex min-h-full w-full flex-col">
+                <header>
+                    <div className="mx-auto w-full max-w-[72rem] px-5">
+                        {$this->headerBar($user?->displayName)}
+                        {null !== $user ? $this->mobileNav() : <div />}
                     </div>
                 </header>
-                <main className="mx-auto max-w-6xl px-4 py-10">
-                    {$this->getChildren()}
+                <main className="flex-1">
+                    <div className="mx-auto w-full max-w-[72rem] px-5 pb-24 pt-4">
+                        {$this->getChildren()}
+                    </div>
                 </main>
             </div>
         );
     }
 
+    private function headerBar(?string $displayName): Element
+    {
+        $left = [
+            H::a(
+                href: '/admin',
+                className: 'font-mono text-[0.9375rem] tracking-[0.14em] text-ink transition-colors hover:text-accent',
+                children: $this->site->title,
+            ),
+        ];
+
+        if (null !== $displayName) {
+            // 子が「配列と要素」の混在になると usePHP が平坦化せずに落ちるので、
+            // ナビの中身は先に 1 本の配列へ均しておく（RootLayout と同じ理由）。
+            $left[] = H::nav(
+                className: 'hidden items-baseline gap-6 md:flex',
+                children: \array_map($this->navLink(...), self::NAVIGATION),
+            );
+        }
+
+        $right = [$this->themeToggle()];
+        $right[] = H::a(
+            href: '/',
+            target: '_blank',
+            rel: 'noopener',
+            className: 'text-[0.8125rem] text-muted transition-colors hover:text-ink',
+            children: 'サイトを見る',
+        );
+
+        if (null !== $displayName) {
+            $right[] = H::a(
+                href: '/admin/logout',
+                className: 'text-[0.8125rem] text-muted transition-colors hover:text-ink',
+                children: 'ログアウト',
+            );
+        }
+
+        return H::div(
+            className: 'flex items-baseline justify-between gap-6 py-8',
+            children: [
+                H::div(className: 'flex items-baseline gap-8', children: $left),
+                H::div(className: 'flex items-baseline gap-5', children: $right),
+            ],
+        );
+    }
+
+    private function mobileNav(): Element
+    {
+        return H::nav(
+            className: 'flex flex-wrap items-baseline gap-5 pb-6 md:hidden',
+            children: \array_map($this->navLink(...), self::NAVIGATION),
+        );
+    }
+
     /**
+     * 公開側にはない「現在地」の表示。管理画面は行き来しながら使うので、
+     * どこにいるかは色の濃さ（muted / ink）だけで示す。
+     *
      * @param array{href: string, label: string} $item
      */
-    private static function navLink(array $item): Element
+    private function navLink(array $item): Element
     {
+        $path = $this->request->path;
+        $current = '/admin' === $item['href']
+            ? '/admin' === \rtrim($path, '/')
+            : \str_starts_with($path, $item['href']);
+
         return H::a(
             href: $item['href'],
-            className: 'text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white',
+            className: $current
+                ? 'text-[0.8125rem] text-ink'
+                : 'text-[0.8125rem] text-muted transition-colors hover:text-ink',
             children: $item['label'],
+        );
+    }
+
+    /**
+     * 公開側と同じトグル。挙動は /assets/site.js が id で拾う。
+     */
+    private function themeToggle(): Element
+    {
+        return (
+            <button
+                id="theme-toggle"
+                type="button"
+                className="text-sm leading-none text-muted transition-colors hover:text-ink"
+                aria-label="表示テーマを切り替える"
+            >
+                <span className="hidden dark:inline">☀</span>
+                <span className="inline dark:hidden">☾</span>
+            </button>
         );
     }
 }

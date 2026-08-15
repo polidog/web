@@ -28,6 +28,9 @@ module.exports = {
         hairline: 'rgb(var(--color-hairline) / <alpha-value>)',
         accent: 'rgb(var(--color-accent) / <alpha-value>)',
         'accent-strong': 'rgb(var(--color-accent-strong) / <alpha-value>)',
+        // 管理画面の通知だけが使う意味色。公開側には出てこない。
+        danger: 'rgb(var(--color-danger) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
       },
       fontFamily: {
         // 日本語の Web フォントは数 MB になり、CDN キャッシュ前提の

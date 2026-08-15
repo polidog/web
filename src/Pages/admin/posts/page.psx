@@ -28,35 +28,32 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Reques
         $list = $posts->listForAdmin('post', $page, '' !== $status ? $status : null, $query);
 
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">記事</h1>
-                    <a
-                        href="/admin/posts/new"
-                        className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-                    >新しい記事</a>
-                </div>
+            <div>
+                {AdminComponents::pageHeader(
+                    '記事',
+                    \sprintf('全 %d 件', $list->total),
+                    [H::a(href: '/admin/posts/new', className: AdminComponents::BUTTON, children: '新しい記事')],
+                )}
 
-                <form method="get" action="/admin/posts" className="flex flex-wrap items-center gap-3">
+                <form method="get" action="/admin/posts" className="mb-8 flex flex-wrap items-center gap-3">
                     <input
                         type="search"
                         name="q"
                         value={$query}
                         placeholder="タイトル・URL で検索"
-                        className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-slate-700 dark:text-white"
+                        aria-label="タイトル・URL で検索"
+                        className="w-64 rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink transition-colors placeholder:text-faint hover:border-muted"
                     />
                     <select
                         name="status"
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-slate-700 dark:text-white"
+                        aria-label="公開状態で絞り込む"
+                        className="rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink"
                     >
                         <option value="" selected={'' === $status}>すべて</option>
                         <option value="published" selected={'published' === $status}>公開</option>
                         <option value="draft" selected={'draft' === $status}>下書き</option>
                     </select>
-                    <button
-                        type="submit"
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-slate-700"
-                    >絞り込む</button>
+                    <button type="submit" className={AdminComponents::BUTTON_QUIET}>絞り込む</button>
                 </form>
 
                 {AdminComponents::postTable($list, '/admin/posts')}
