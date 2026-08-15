@@ -34,7 +34,7 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closu
 
         return (
             <article>
-                <h1 className="text-[1.875rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2.25rem]">
+                <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]">
                     {(string) $page['title']}
                 </h1>
                 <div className="prose mt-12">

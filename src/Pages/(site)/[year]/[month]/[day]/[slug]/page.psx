@@ -63,7 +63,7 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, SiteCo
             <article>
                 <header>
                     {Components::date((string) $post['publishedAt'])}
-                    <h1 className="mt-3 text-[1.875rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2.25rem]">
+                    <h1 className="mt-3 text-[1.75rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]">
                         {(string) $post['title']}
                     </h1>
                     {[] !== $tags
