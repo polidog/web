@@ -163,6 +163,67 @@ $terms = static function (array $frontMatter, array $keys): array {
     return \array_values(\array_unique($values));
 };
 
+/**
+ * front matter の `image` を URL に直す。
+ *
+ * Hugo の値は `images/covers/php-logo.png` のように **先頭スラッシュが無い**。
+ * テーマ側が `{{ .Params.image | absURL }}`（themes/polidog/layouts/_default/
+ * single.html）で補っていたので、そのまま持ってくると記事 URL からの相対解決
+ * （`/2012/01/13/x/images/covers/php-logo.png`）になって 404 になる。
+ *
+ * `eyecatch:` という WordPress 移行時代のキーもあるが、テーマが見るのは
+ * `.Params.image` だけで **Hugo では表示されていなかった**。ここでも読まない
+ * ことで現行サイトと見た目を一致させる。
+ */
+$eyecatchUrl = static function (mixed $value): ?string {
+    if (!\is_string($value)) {
+        return null;
+    }
+
+    $trimmed = \trim($value);
+    if ('' === $trimmed) {
+        return null;
+    }
+
+    // 絶対 URL とプロトコル相対はそのまま（現状は 1 件も無いが、
+    // 将来 front matter に書かれても壊さない）。
+    if (\preg_match('#^(https?:)?//#i', $trimmed) || \str_starts_with($trimmed, '/')) {
+        return $trimmed;
+    }
+
+    return '/' . $trimmed;
+};
+
+/**
+ * 本文に残った壊れた画像参照を直す。Hugo のソースはもう更新しないので、
+ * 移植のここが最後の変換点になる。
+ *
+ * - 先頭スラッシュの無い `images/...`。absURL が効くのは front matter の
+ *   `image` だけで、本文の相対リンクは Hugo でも素通しだった（つまり
+ *   移行前から 404）。実体は `/images/...` にあるので補って直す。
+ * - 旧 WordPress の `/wp-content/uploads/...`。実体は Hugo の static に
+ *   移されておらず、こちらも Hugo 時代からリンク切れ。lightbox 用の
+ *   `<a>` で包まれているので、リンクごと落とす（リンク先も同じく 404）。
+ */
+$rewriteImages = static function (string $body): string {
+    $patterns = [
+        // <a href="...wp-content..."><img ...></a> をリンクごと
+        '#<a\b[^>]*href="[^"]*/wp-content/[^"]*"[^>]*>\s*<img\b[^>]*>\s*</a>#i' => '',
+        // 上で包まれていなかった裸の <img>
+        '#<img\b[^>]*\bsrc="[^"]*/wp-content/[^"]*"[^>]*>#i' => '',
+        // Markdown 記法の相対パス: ![alt](images/...)
+        '#(!\[[^\]]*\]\()images/#' => '$1/images/',
+        // 生 HTML の相対パス: <img src="images/...">
+        '#(<img\b[^>]*\bsrc=")images/#i' => '$1/images/',
+    ];
+
+    foreach ($patterns as $pattern => $replacement) {
+        $body = \preg_replace($pattern, $replacement, $body) ?? $body;
+    }
+
+    return $body;
+};
+
 // --- 走査 -----------------------------------------------------------------
 
 $files = [];
@@ -273,21 +334,13 @@ foreach ($files as $absolutePath) {
         $slugs['Category'][HugoSlug::urlize($name)] = true;
     }
 
-    $eyecatch = null;
-    foreach (['image', 'eyecatch'] as $key) {
-        $value = $frontMatter[$key] ?? null;
-        if (\is_string($value) && '' !== \trim($value)) {
-            $eyecatch = \trim($value);
-
-            break;
-        }
-    }
+    $eyecatch = $eyecatchUrl($frontMatter['image'] ?? null);
 
     $input = new PostInput(
         kind: $kind,
         path: PostInput::normalizePath($path),
         title: (string) ($frontMatter['title'] ?? \basename($withoutExtension)),
-        body: $body,
+        body: $rewriteImages($body),
         status: $status,
         publishedAt: $publishedAt,
         eyecatch: $eyecatch,

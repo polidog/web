@@ -52,7 +52,10 @@ if [ ! -f public/assets/hljs/highlight.min.js ] && [ -d node_modules/@highlightj
     bash bin/build-hljs.sh
 fi
 
-php -S "$addr" -t public &
+# ルータを噛ませているのは /images/* のため。本番では Caddy が volume から
+# 直接返しているので、ビルトインサーバにも同じ口を用意しないとローカルだけ
+# 画像が全部 404 になる（bin/dev-router.php）。
+php -S "$addr" -t public bin/dev-router.php &
 server_pid=$!
 
 # 両方ともバックグラウンドに置いて wait で待つ。前景で php を走らせると
