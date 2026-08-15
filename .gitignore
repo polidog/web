@@ -4,5 +4,7 @@
 /public/usephp.js
 # Tailwind のビルド成果物。Docker のビルドステージで生成する。
 /public/assets/style.css
+# highlight.js を node_modules から複製したもの（bin/build-hljs.sh）。同じく生成物。
+/public/assets/hljs/
 /.env.local
 /.env.*.local

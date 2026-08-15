@@ -1,12 +1,15 @@
 {
   "name": "polidog-web",
   "private": true,
-  "description": "polidog.jp — Relayer CMS のフロントエンドアセット（CSS のみ）",
+  "description": "polidog.jp — Relayer CMS のフロントエンドアセット（CSS と highlight.js）",
   "scripts": {
-    "build": "tailwindcss -i ./assets/tailwind.css -o ./public/assets/style.css --minify",
+    "build": "npm run build:css && npm run build:hljs",
+    "build:css": "tailwindcss -i ./assets/tailwind.css -o ./public/assets/style.css --minify",
+    "build:hljs": "bash bin/build-hljs.sh",
     "watch": "tailwindcss -i ./assets/tailwind.css -o ./public/assets/style.css --watch"
   },
   "devDependencies": {
+    "@highlightjs/cdn-assets": "^11.12.0",
     "@tailwindcss/typography": "^0.5.10",
     "tailwindcss": "^3.4.0"
   }

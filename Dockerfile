@@ -5,7 +5,7 @@
 # どれも presence-gated（成果物が無ければライブ経路に縮退する）なので、
 # 1 つ欠けても壊れはしないが、揃えておけばリクエスト時の仕事はほぼゼロになる。
 
-# --- CSS のビルド ---------------------------------------------------------
+# --- フロントエンドのビルド -----------------------------------------------
 # Node はここだけ。ランタイムイメージには 1 バイトも入らない。
 FROM node:22-slim AS css
 
@@ -18,6 +18,11 @@ COPY tailwind.config.js ./
 COPY assets ./assets
 COPY src ./src
 RUN npx tailwindcss -i ./assets/tailwind.css -o ./style.css --minify
+
+# highlight.js は node_modules からの複製なので、Node がいるこのステージで
+# 済ませる。生成先は /build/public/assets/hljs/。
+COPY bin/build-hljs.sh ./bin/
+RUN bash bin/build-hljs.sh
 
 # --- アプリ ---------------------------------------------------------------
 FROM dunglas/frankenphp:php8.5
@@ -39,6 +44,7 @@ RUN composer install --no-interaction --prefer-dist --no-dev \
 
 COPY . .
 COPY --from=css /build/style.css /app/public/assets/style.css
+COPY --from=css /build/public/assets/hljs /app/public/assets/hljs
 
 RUN composer install --no-interaction --prefer-dist --no-dev \
     --classmap-authoritative

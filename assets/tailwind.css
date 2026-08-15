@@ -30,6 +30,27 @@
      */
     --color-danger: 175 32 32;
     --color-success: 22 101 52;
+
+    /*
+     * コードブロックの配色。github-light 相当の 7 色で、highlight.js が
+     * 出す .hljs-* に割り当てる（当てているのは下の components 側）。
+     *
+     * 本文の色と違ってここだけ色数が多いのは、コードが「読み物」ではなく
+     * 「構造を目で追うもの」だから。とはいえ面には色を置かず、文字だけに
+     * 載せる——背景は本文と同じ raised のまま。
+     *
+     * bg-raised（237 237 230）の上でのコントラストは keyword の 4.68:1 が
+     * 最低で、7 色すべて本文サイズの AA（4.5:1）を満たす。github の
+     * オリジナルは白背景前提で comment が 4.4:1 に届かないので、この 2 色
+     * （keyword・comment）だけ濃く振ってある。
+     */
+    --color-code-keyword: 205 27 58; /* キーワード・型 */
+    --color-code-entity: 102 57 184; /* 関数名・クラス名 */
+    --color-code-constant: 0 85 185; /* 数値・定数・属性 */
+    --color-code-string: 3 47 98; /* 文字列 */
+    --color-code-builtin: 173 74 0; /* 組み込み・シンボル */
+    --color-code-comment: 92 101 111; /* コメント */
+    --color-code-tag: 26 118 48; /* タグ名・セレクタ */
   }
 
   .dark {
@@ -43,6 +64,15 @@
     --color-accent-strong: 184 214 232;
     --color-danger: 240 138 138;
     --color-success: 126 206 148;
+
+    /* github-dark 相当。raised（30 31 36）の上で最低 5.98:1（comment）。 */
+    --color-code-keyword: 255 123 114;
+    --color-code-entity: 210 168 255;
+    --color-code-constant: 121 192 255;
+    --color-code-string: 165 214 255;
+    --color-code-builtin: 255 166 87;
+    --color-code-comment: 148 157 167;
+    --color-code-tag: 126 231 135;
   }
 
   body {
@@ -84,10 +114,10 @@
 }
 
 /*
- * 記事本文。Hugo 時代は chroma がサーバ側で色を付けていたが、こちらは
- * CommonMark が `<pre><code class="language-xxx">` を出すだけなので、色は
- * 付けずに読みやすさだけ整える。言語別の着色が欲しくなったら prism を
- * 足せばよい（class 名は互換）。
+ * 記事本文。Hugo 時代は chroma がサーバ側で色を付けていた。こちらは
+ * CommonMark が `<pre><code class="language-xxx">` を出すところまでで、
+ * 色はブラウザ側の highlight.js が後から当てる
+ * （public/assets/highlight-init.js）。
  */
 @layer components {
   .prose pre {
@@ -157,4 +187,97 @@
   .editor-preview .prose {
     @apply max-w-none text-[0.9375rem];
   }
+}
+
+/*
+ * highlight.js の出すクラスに色を当てる。
+ *
+ * **@layer components の外に置くこと。** レイヤーの中に書くと Tailwind は
+ * 「src/** をスキャンして使われていたクラスだけ」を出力するので、JS が実行時
+ * に付ける .hljs-* は 1 つ残らず消える（消えても CSS のビルドは成功するし、
+ * HTML には色の無い span だけが並ぶので、気づくのは実際にページを見たとき）。
+ *
+ * 色は変数越しなので、.dark 側の差し替えはここを触らなくても効く。
+ * 背景を指定していないのは、`.hljs` が付いた <code> を上の
+ * `.prose pre code` が透明にしているから——箱の色は bg-raised の 1 か所で決まる。
+ */
+.hljs-keyword,
+.hljs-doctag,
+.hljs-type,
+.hljs-literal,
+.hljs-selector-tag,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-variable.language_ {
+  color: rgb(var(--color-code-keyword));
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_,
+.hljs-section {
+  color: rgb(var(--color-code-entity));
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-meta,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: rgb(var(--color-code-constant));
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-char.escape_,
+.hljs-meta .hljs-string {
+  color: rgb(var(--color-code-string));
+}
+
+.hljs-built_in,
+.hljs-symbol,
+.hljs-bullet {
+  color: rgb(var(--color-code-builtin));
+}
+
+.hljs-comment,
+.hljs-code,
+.hljs-formula,
+.hljs-quote {
+  color: rgb(var(--color-code-comment));
+}
+
+.hljs-name,
+.hljs-tag,
+.hljs-selector-pseudo {
+  color: rgb(var(--color-code-tag));
+}
+
+/* 太字・斜体は Markdown の中の code に出る。色は変えない。 */
+.hljs-strong {
+  font-weight: 600;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/*
+ * diff だけは面で見せる。行の増減は文字色では追いにくく、ここは
+ * 「読み物」ではなく差分を目で拾う場所なので、罫線を引かない方針の
+ * 例外として扱う。
+ */
+.hljs-addition {
+  color: rgb(var(--color-code-tag));
+  background-color: rgb(var(--color-code-tag) / 0.1);
+}
+
+.hljs-deletion {
+  color: rgb(var(--color-code-keyword));
+  background-color: rgb(var(--color-code-keyword) / 0.1);
 }
