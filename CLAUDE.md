@@ -219,9 +219,9 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
 | `DATABASE_PATH` | `var/cms.db` | SQLite の場所（fly では `/data/cms.db`） |
 | `UPLOADS_DIR` | `var/uploads` | 画像。Caddy が `/images/*` を直接配信する |
 | `ETAGS_DIR` | `var/cache/etags` | **volume に置くこと**。イメージ内だとデプロイで消え、304 が効かなくなる |
-| `SITE_URL` | `https://polidog.jp` | canonical / RSS / OAuth の redirect_uri |
-| `GITHUB_CLIENT_ID` / `_SECRET` | — | 管理画面のログイン |
-| `GITHUB_ALLOWED_LOGINS` | — | 許可する GitHub アカウント（カンマ区切り）。**空なら誰も入れない** |
+| `SITE_URL` | `https://polidog.jp` | canonical / RSS の絶対 URL |
+| `ADMIN_EMAIL` | — | 管理画面に入れる唯一のメールアドレス |
+| `ADMIN_PASSWORD_HASH` | — | そのパスワードの `password_hash()` 出力。**どちらかが空なら誰も入れない** |
 | `CLOUDFLARE_ZONE_ID` / `_API_TOKEN` | — | purge。未設定なら no-op |
 | `DISQUS_SHORTNAME` | — | 空ならコメント欄を出さない |
 
@@ -229,18 +229,30 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
 `%env(default::VAR)%` が未設定時に **null** を返すのを避けるため（受け側は
 「空文字なら無効」で揃えてある）。
 
+`.env` は**コミットされる**。資格情報はそこに書かず、`.gitignore` 済みの
+`.env.local`（Dotenv が `.env` の後に読む）か fly の secrets に置く。
+`ADMIN_PASSWORD_HASH` は `$` を含むので、`.env.local` では**シングル
+クォートで囲む** —— 二重引用符と無引用符の値は Dotenv が変数展開する。
+
 ## 落とし穴
 
 - **`container:compile` は env をビルド時に焼き込む。** secret は必ず
   `%env(VAR)%` 経由で参照すること（`$_ENV[...]` の直読みは空文字が焼き付く）。
 - **`Authenticator` は `UserProvider` がバインドされていないと DI に登録されない。**
-  GitHub OAuth しか使わないが、`App\Auth\GithubUserProvider`（常に null を返す）を
-  バインドしているのはこのため。消すと `#[Auth]` も `requireAuth()` も動かなくなる。
+  `App\Auth\AdminUserProvider` を `Polidog\Relayer\Auth\UserProvider` に
+  alias してあるのがそれ。外すとログインだけでなく `#[Auth]` も
+  `requireAuth()` も動かなくなる。
 - **`PageContext::metadata()` は使わない。** 既定の `HtmlDocument` にしか届かず、
   このアプリは canonical のために `SiteDocument` に差し替えている。
   head の設定は `App\Service\PageMeta` を通す。
 - **tehilim に `@@index` は無い。** インデックスは
   `tehilim/migrations/*_indexes/migration.sql` に手書きしてある。
+- **マイグレーションの SQL で、文の頭にコメントを置かない。**
+  `Migrator::runStatements()` は `--` で始まる文を丸ごと読み飛ばす。
+  文と文の間にコメントを書くと、それが次の文にくっつき、**その文が音も
+  無く消える**（`_indexes` はこれで 4 本中 3 本が DB に届いておらず、
+  `20260815124500000_missing_indexes` で入れ直した）。説明は文の中か
+  ファイル末尾に置くこと。
 - **アップロードで SVG は受けない**（`MediaStorage::ALLOWED`）。SVG は XML なので
   スクリプトを持てて、`/images/...` は管理画面と同じオリジンで配信される。
   Caddy 側でも画像パスに `Content-Security-Policy: default-src 'none'; sandbox`

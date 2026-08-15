@@ -30,10 +30,16 @@ php bin/import-hugo.php --content=../website/content   # 記事を取り込む
 composer serve                    # → http://127.0.0.1:8000（CSS の watch 付き）
 ```
 
-管理画面は `/admin`。ログインには GitHub OAuth の設定が要る（`.env` の
-`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_ALLOWED_LOGINS`）。
-OAuth アプリの Authorization callback URL には `<SITE_URL>/admin/auth/callback`
-を登録する。
+管理画面は `/admin`。ログインはメールアドレスとパスワードで、入れるのは
+その 1 組を知っている 1 人だけ。`.gitignore` 済みの `.env.local` に
+`ADMIN_EMAIL` と `ADMIN_PASSWORD_HASH` を置く（どちらかが空なら誰も入れない）。
+
+```bash
+php bin/hash-password.php    # 平文を訊いて ADMIN_PASSWORD_HASH=... を出す
+```
+
+ハッシュは `$` を含むので、貼るときはシングルクォートを外さないこと
+（シェルと Dotenv の変数展開に食われる）。
 
 本番と同じ経路（FrankenPHP + Caddy + volume）で動かしたいときは
 `docker compose up --build`（→ http://localhost:8080）。
@@ -56,7 +62,8 @@ php bin/verify-urls.php --base=http://127.0.0.1:8000   # URL が壊れていな�
 
 ```bash
 fly volumes create polidog_data --region nrt --size 3
-fly secrets set GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... \
+fly secrets set ADMIN_EMAIL=you@example.com \
+                ADMIN_PASSWORD_HASH='$2y$12$...' \
                 CLOUDFLARE_ZONE_ID=... CLOUDFLARE_API_TOKEN=... \
                 USEPHP_SNAPSHOT_SECRET="$(openssl rand -hex 32)"
 fly deploy

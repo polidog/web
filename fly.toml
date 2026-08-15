@@ -23,12 +23,14 @@ primary_region = "nrt"
 
   SITE_URL = "https://polidog.jp"
   DISQUS_SHORTNAME = "polidoglab"
-  GITHUB_ALLOWED_LOGINS = "polidog"
 
 # secrets（`fly secrets set` で投入する。fly.toml には書かない）:
-#   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET
+#   ADMIN_EMAIL / ADMIN_PASSWORD_HASH  ← 管理画面のログイン。両方要る
 #   CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN
 #   USEPHP_SNAPSHOT_SECRET
+#
+# ハッシュは `$` を含むので、シェルに食われないようシングルクォートで囲む:
+#   fly secrets set ADMIN_PASSWORD_HASH='$2y$12$...'
 
 [[mounts]]
   source = "polidog_data"

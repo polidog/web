@@ -25,11 +25,11 @@ parameters:
   # 無効」で揃えてあるので、空文字を返すパラメータを既定値に指名する。
   app.empty: ''
 
-  # GitHub OAuth。allowed_logins はログインを許可する GitHub アカウント名
-  # （カンマ区切り）。空なら誰もログインできない。
-  app.github.client_id: '%env(default:app.empty:GITHUB_CLIENT_ID)%'
-  app.github.client_secret: '%env(default:app.empty:GITHUB_CLIENT_SECRET)%'
-  app.github.allowed_logins: '%env(default:app.empty:GITHUB_ALLOWED_LOGINS)%'
+  # 管理画面のログイン。入れるのはこの 1 組を知っている 1 人だけ。
+  # ADMIN_PASSWORD_HASH に入れるのは平文ではなく password_hash() の出力
+  # （`php bin/hash-password.php` で作る）。どちらかが空なら誰も入れない。
+  app.admin.email: '%env(default:app.empty:ADMIN_EMAIL)%'
+  app.admin.password_hash: '%env(default:app.empty:ADMIN_PASSWORD_HASH)%'
 
   # Cloudflare purge。未設定なら CachePurger は no-op になる。
   app.cloudflare.zone_id: '%env(default:app.empty:CLOUDFLARE_ZONE_ID)%'
@@ -69,11 +69,12 @@ services:
       $siteUrl: '%app.site_url%'
       $disqusShortname: '%app.disqus_shortname%'
 
-  # パスワード認証は使わないが、UserProvider をバインドしないと Relayer は
-  # Authenticator を DI に登録せず #[Auth] / requireAuth() が動かない
+  # UserProvider をバインドすると Relayer が Authenticator を DI に登録し、
+  # #[Auth] / requireAuth() / attempt() が動くようになる
   # （vendor/polidog/relayer/src/Di/ContainerFactory.php の遅延登録）。
+  # 外すとログインだけでなく管理画面のガードごと死ぬ。
   Polidog\Relayer\Auth\UserProvider:
-    alias: App\Auth\GithubUserProvider
+    alias: App\Auth\AdminUserProvider
 
   App\Service\CachePurger:
     arguments:
@@ -85,8 +86,7 @@ services:
     arguments:
       $uploadsDir: '%app.uploads_dir%'
 
-  App\Auth\GithubOAuth:
+  App\Auth\AdminUserProvider:
     arguments:
-      $clientId: '%app.github.client_id%'
-      $clientSecret: '%app.github.client_secret%'
-      $allowedLogins: '%app.github.allowed_logins%'
+      $email: '%app.admin.email%'
+      $passwordHash: '%app.admin.password_hash%'

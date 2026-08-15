@@ -51,13 +51,4 @@ final readonly class SiteConfig
 
         return $base . \rtrim($path, '/') . '/';
     }
-
-    /**
-     * 末尾スラッシュを足さない絶対 URL。OAuth の redirect_uri のように
-     * 「GitHub 側に登録した文字列と完全一致していないと弾かれる」用途に使う。
-     */
-    public function rawUrl(string $path): string
-    {
-        return \rtrim($this->siteUrl, '/') . '/' . \ltrim($path, '/');
-    }
 }
