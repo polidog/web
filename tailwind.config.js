@@ -59,7 +59,7 @@ module.exports = {
         ],
       },
       maxWidth: {
-        // 本文 17px で 1 行 40 字強。日本語の読み物としてはこのあたり。
+        // 一覧・詳細を通した共通幅。本文 15px で 1 行 46 字前後。
         measure: '44rem',
       },
       typography: {
@@ -81,7 +81,10 @@ module.exports = {
             '--tw-prose-th-borders': 'rgb(var(--color-hairline))',
             '--tw-prose-td-borders': 'rgb(var(--color-hairline))',
             maxWidth: 'none',
-            fontSize: '1.0625rem',
+            // 本文は一覧の中間級（0.9375rem）に合わせる。アーカイブの行・
+            // 前後の記事・タグ一覧と同じ大きさなので、一覧から詳細に移っても
+            // 級数が飛ばない。抜粋の 0.8125rem まで落とすと長文が読めない。
+            fontSize: '0.9375rem',
             lineHeight: '1.9',
             a: {
               fontWeight: '400',
@@ -96,13 +99,15 @@ module.exports = {
               letterSpacing: '-0.02em',
               fontWeight: '600',
             },
+            // 本文を下げたぶん、見出しも同じ比で下げて級差を保つ。
+            // h3 の 1.0625rem は一覧の記事タイトルと同じ級数。
             h2: {
-              fontSize: '1.375rem',
+              fontSize: '1.25rem',
               marginTop: '3.5rem',
               marginBottom: '1rem',
             },
             h3: {
-              fontSize: '1.125rem',
+              fontSize: '1.0625rem',
               marginTop: '2.5rem',
               marginBottom: '0.75rem',
             },
