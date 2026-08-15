@@ -10,15 +10,15 @@ use Polidog\Tehilim\Client\Relation;
 /**
  * @phpstan-import-type PostRowScalar from \App\Tehilim\Model\Post
  * @phpstan-import-type PostWhereUnique from \App\Tehilim\Model\Post
- * @phpstan-type UserRowScalar array{id: int, githubId: int, login: string, name: string|null, avatarUrl: string|null, role: string, createdAt: \DateTimeImmutable}
- * @phpstan-type UserRow array{id: int, githubId: int, login: string, name: string|null, avatarUrl: string|null, role: string, createdAt: \DateTimeImmutable, posts?: list<PostRowScalar>}
- * @phpstan-type UserInsertInput array{id?: int, githubId: int, login: string, name?: string|null, avatarUrl?: string|null, role?: string, createdAt?: \DateTimeImmutable}
- * @phpstan-type UserUpdateInput array{id?: int, githubId?: int, login?: string, name?: string|null, avatarUrl?: string|null, role?: string, createdAt?: \DateTimeImmutable}
- * @phpstan-type UserWhereUnique array{id?: int, githubId?: int}
+ * @phpstan-type UserRowScalar array{id: int, email: string, name: string|null, role: string, createdAt: \DateTimeImmutable}
+ * @phpstan-type UserRow array{id: int, email: string, name: string|null, role: string, createdAt: \DateTimeImmutable, posts?: list<PostRowScalar>}
+ * @phpstan-type UserInsertInput array{id?: int, email: string, name?: string|null, role?: string, createdAt?: \DateTimeImmutable}
+ * @phpstan-type UserUpdateInput array{id?: int, email?: string, name?: string|null, role?: string, createdAt?: \DateTimeImmutable}
+ * @phpstan-type UserWhereUnique array{id?: int, email?: string}
  * @phpstan-type UserWhereInput array<string,mixed>
  * @phpstan-type UserOrderBy array<string,'asc'|'desc'>|list<array<string,'asc'|'desc'>>
  * @phpstan-type UserInclude array{posts?: bool|array{where?: array<string,mixed>, take?: int, skip?: int}}
- * @phpstan-type UserSelect array{id?: bool, githubId?: bool, login?: bool, name?: bool, avatarUrl?: bool, role?: bool, createdAt?: bool}|list<'id'|'githubId'|'login'|'name'|'avatarUrl'|'role'|'createdAt'>
+ * @phpstan-type UserSelect array{id?: bool, email?: bool, name?: bool, role?: bool, createdAt?: bool}|list<'id'|'email'|'name'|'role'|'createdAt'>
  */
 final class User extends BaseModelClient
 {
@@ -37,13 +37,13 @@ final class User extends BaseModelClient
     /** @return list<string> */
     protected function columns(): array
     {
-        return ['id', 'githubId', 'login', 'name', 'avatarUrl', 'role', 'createdAt'];
+        return ['id', 'email', 'name', 'role', 'createdAt'];
     }
 
     /** @return array<string,string> */
     protected function columnTypes(): array
     {
-        return ['id' => 'int', 'githubId' => 'int', 'login' => 'string', 'name' => 'string', 'avatarUrl' => 'string', 'role' => 'string', 'createdAt' => 'DateTime'];
+        return ['id' => 'int', 'email' => 'string', 'name' => 'string', 'role' => 'string', 'createdAt' => 'DateTime'];
     }
 
     /** @return array<string, Relation> */

@@ -18,13 +18,14 @@ generator client {
   namespace = "App\\Tehilim"
 }
 
-// 管理者。GitHub OAuth でログインした人だけがここに入る。
+// 管理者。ログインするのは 1 人だけで、資格情報（メールアドレスと
+// パスワードハッシュ）は環境変数が持つ —— この行はパスワードを保管する
+// ためではなく、記事の authorId が指す先を作るために存在する。
+// 初回ログイン時に AdminUserProvider が email で upsert する。
 model User {
   id        Int      @id @default(autoincrement())
-  githubId  Int      @unique
-  login     String
+  email     String   @unique
   name      String?
-  avatarUrl String?
   role      String   @default("admin")
   createdAt DateTime @default(now())
   posts     Post[]

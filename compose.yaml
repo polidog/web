@@ -18,7 +18,12 @@ services:
       ETAGS_DIR: /data/etags
       SITE_URL: http://localhost:8080
       DISQUS_SHORTNAME: polidoglab
-      GITHUB_ALLOWED_LOGINS: polidog
+      # 管理画面に入りたいときは、この 2 つを渡して起動する
+      # （ハッシュは php bin/hash-password.php の出力）。compose はこの
+      # ファイル内の `$` を変数展開するので、ここに直接書くなら `$` を
+      # `$$` に置き換えること。素の値のまま渡すなら `--env-file` を使う。
+      # ADMIN_EMAIL: you@example.com
+      # ADMIN_PASSWORD_HASH: $$2y$$12$$...
     volumes:
       # fly の volume に対応するもの。DB・画像・ETag はここに残る。
       - app-data:/data
