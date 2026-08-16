@@ -26,7 +26,10 @@ if (\str_starts_with($path, '/images/')) {
         (new Symfony\Component\Dotenv\Dotenv())->loadEnv($projectRoot . '/.env');
     }
 
-    $uploadsDir = $_ENV['UPLOADS_DIR'] ?? \getenv('UPLOADS_DIR') ?: null;
+    // `?: null` は付けない。付けると falsy が先に潰れて、下の
+    // `'' !== $uploadsDir` が到達不能な条件になる（PHPStan が level 8 で
+    // 弾く）。空文字の判定は下の 1 か所に寄せる。
+    $uploadsDir = $_ENV['UPLOADS_DIR'] ?? \getenv('UPLOADS_DIR');
     $imagesRoot = \realpath(\rtrim(\is_string($uploadsDir) && '' !== $uploadsDir
         ? $uploadsDir
         : $projectRoot . '/var/uploads', '/') . '/images');
