@@ -134,6 +134,11 @@ final class SiteDocument implements DocumentInterface
                 $this->esc($this->site->title),
                 $this->esc($this->site->absoluteUrl('/index.xml')),
             ),
+            // ico はブラウザが link を読む前にルートを取りに来るぶんの受け皿で、
+            // 中身は 16/32/48 の 3 枚。表示に使われるのは下の PNG のほう。
+            '<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">',
+            '<link rel="icon" type="image/png" href="/assets/favicon/icon-32.png" sizes="32x32">',
+            '<link rel="apple-touch-icon" href="/assets/favicon/icon-180.png">',
             ...$this->googleAnalyticsHead(),
             '<link rel="stylesheet" href="/assets/style.css">',
         ];

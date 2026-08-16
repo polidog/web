@@ -39,6 +39,15 @@
 		file_server
 	}
 
+	# ブラウザは <link rel="icon"> を読む前にルートの /favicon.ico を取りに来る。
+	# 素通しでも php_server の file_server が返すが、それだとキャッシュヘッダが
+	# 付かず、CDN も持たないので毎回オリジンに来る。
+	handle /favicon.ico {
+		root * /app/public
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
 	handle {
 		root * /app/public
 		encode zstd br gzip
