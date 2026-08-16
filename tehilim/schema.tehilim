@@ -72,3 +72,61 @@ model Category {
   slug  String @unique
   posts Post[]
 }
+
+// --- MCP コネクタ用の OAuth 2.1 認可サーバー -------------------------------
+//
+// Claude Chat のカスタムコネクタは、繋ぎ先の MCP サーバーが OAuth 2.1 の
+// 認可サーバーであることを前提にしている。ここはその保管場所。
+//
+// 記事側の「読みは生 SQL、書きは tehilim」という住み分けを OAuth には
+// 持ち込まない。あの住み分けは PostRepository がリレーションフィルタ・
+// 集約・式による ORDER BY という tehilim で書けない 3 つに当たったからで、
+// OAuth のクエリは全部「一意キーで 1 件引く」か「1 件入れる/消す」しかなく、
+// その制約に 1 つも触れないため。
+
+// Claude が Dynamic Client Registration (RFC 7591) で登録してくるクライアント。
+// 無認証で登録できる仕様なので、OauthStore が件数の上限を持って古い順に捨てる。
+model OauthClient {
+  id                      Int      @id @default(autoincrement())
+  clientId                String   @unique
+  clientName              String
+  // redirect_uri は複数ありうるが tehilim にスカラー配列型が無いので JSON 文字列。
+  redirectUris            String
+  tokenEndpointAuthMethod String   @default("none")
+  clientSecretHash        String?
+  createdAt               DateTime @default(now())
+}
+
+// 認可コード。寿命 60 秒・1 回限りで、引き換えたら usedAt が入る。
+// 平文ではなく SHA-256 を保存する（DB ファイルは記事と同じ volume に載る）。
+model OauthAuthCode {
+  id            Int       @id @default(autoincrement())
+  codeHash      String    @unique
+  clientId      String
+  redirectUri   String
+  codeChallenge String
+  scope         String
+  resource      String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// アクセストークンとリフレッシュトークンを 1 行のペアで持つ。
+// 公開クライアントにはリフレッシュのローテーションが必須で、
+// ペアで持てば「古い行を失効させて新しい行を作る」の 1 操作で済む。
+// こちらも保存するのは SHA-256 だけ。
+model OauthToken {
+  id               Int       @id @default(autoincrement())
+  accessTokenHash  String    @unique
+  refreshTokenHash String?   @unique
+  clientId         String
+  scope            String
+  // トークンの audience。RFC 8707 の resource パラメータで、MCP は
+  // 「自分宛てに発行されたトークンであることの検証」を MUST にしている。
+  resource         String
+  accessExpiresAt  DateTime
+  refreshExpiresAt DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+}

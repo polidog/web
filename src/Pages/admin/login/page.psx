@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Auth\AdminUserProvider;
+use App\Auth\Oauth\OauthServer;
 use App\Service\PageMeta;
 use App\Support\PageCache;
 use App\View\AdminComponents;
 use Polidog\Relayer\Auth\AuthenticatorInterface;
+use Polidog\Relayer\Auth\SessionStorage;
 use Polidog\Relayer\Router\Component\PageContext;
 use Polidog\UsePhp\Html\H;
 use Polidog\UsePhp\Runtime\Element;
@@ -23,20 +25,40 @@ return function (
     PageMeta $meta,
     AuthenticatorInterface $auth,
     AdminUserProvider $admin,
+    SessionStorage $session,
 ): Closure {
     $ctx->cache(PageCache::admin());
     $meta->apply('/admin/login', 'ログイン');
 
+    /**
+     * ログイン後の行き先。
+     *
+     * 通常は管理画面だが、MCP コネクタの同意画面（/oauth/authorize）から
+     * 送られてきた場合はそちらへ戻す。戻り先を URL で受け取らずセッションに
+     * 預けたクエリだけを使うのは、任意の URL へ飛べる口を作らないため。
+     */
+    $destination = static function () use ($session): string {
+        $pending = $session->get(OauthServer::PENDING_SESSION_KEY);
+
+        if (!\is_array($pending) || [] === $pending) {
+            return '/admin';
+        }
+
+        $session->remove(OauthServer::PENDING_SESSION_KEY);
+
+        return '/oauth/authorize?' . \http_build_query($pending);
+    };
+
     // ログイン済みで開いたら管理画面へ返す（ブックマークから来たとき用）。
     if ($auth->check()) {
-        $ctx->redirect('/admin');
+        $ctx->redirect($destination());
     }
 
     $failed = false;
     $email = '';
     $configured = $admin->configured();
 
-    $login = $ctx->action('login', function (array $form) use ($auth, $ctx, &$failed, &$email): void {
+    $login = $ctx->action('login', function (array $form) use ($auth, $ctx, $destination, &$failed, &$email): void {
         $email = \trim((string) ($form['email'] ?? ''));
         $password = (string) ($form['password'] ?? '');
 
@@ -46,7 +68,7 @@ return function (
             return;
         }
 
-        $ctx->redirect('/admin');
+        $ctx->redirect($destination());
     });
 
     return function () use ($login, $configured, &$failed, &$email): Element {
