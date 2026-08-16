@@ -1,7 +1,7 @@
 name: Deploy to Fly.io
 
 env:
-  FLY_APP: polidog-jp
+  FLY_APP: web-fzmoua
 
 on:
   push:

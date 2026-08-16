@@ -100,16 +100,26 @@ fly deploy
 fly scale count 1        # SQLite の書き手を 1 つに保つ
 ```
 
+ローカルの `var/cms.db` と `var/uploads` を本番 volume に投入するには:
+
+```bash
+bin/push-local-data-to-fly.sh
+```
+
+このスクリプトは `fly.toml` の `app` を読み、`sqlite3 .backup` で固めた DB を
+`/data/cms.db` に差し替える。既存の本番 DB と uploads は
+`/data/*.bak.<timestamp>` として残す。
+
 `main` に push すると GitHub Actions が `flyctl deploy --remote-only` を実行する。
 初回だけ Fly の deploy token を作り、GitHub の repository secret に
 `FLY_API_TOKEN` として登録しておく:
 
 ```bash
-fly tokens create deploy -a polidog-jp -x 720h
+fly tokens create deploy -a web-fzmoua -x 720h
 gh secret set FLY_API_TOKEN
 ```
 
-`app not found` で失敗する場合は、`FLY_API_TOKEN` が `polidog-jp` 用ではないか、
+`app not found` で失敗する場合は、`FLY_API_TOKEN` が `web-fzmoua` 用ではないか、
 期限切れ・別アカウント/別organizationの token になっている。token を作り直して
 同じ secret 名で上書きする。
 
