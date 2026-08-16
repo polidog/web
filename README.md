@@ -100,6 +100,19 @@ fly deploy
 fly scale count 1        # SQLite の書き手を 1 つに保つ
 ```
 
+`main` に push すると GitHub Actions が `flyctl deploy --remote-only` を実行する。
+初回だけ Fly の deploy token を作り、GitHub の repository secret に
+`FLY_API_TOKEN` として登録しておく:
+
+```bash
+fly tokens create deploy -a polidog-jp
+gh secret set FLY_API_TOKEN
+```
+
+`.github/workflows/fly-deploy.yml` には `workflow_dispatch` もあるので、
+GitHub の Actions 画面から手動デプロイもできる。SQLite volume は 1 台運用なので、
+ワークフロー側でも同時デプロイは直列化している。
+
 ビルド時に Tailwind の CSS、`.psx` のコンパイル、ルートマップ、DI コンテナを
 全部作ってから配る。起動時には `docker-entrypoint.sh` が volume を初期化し、
 `tehilim migrate deploy` を流す。
