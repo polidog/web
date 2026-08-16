@@ -124,6 +124,7 @@ final class SiteDocument implements DocumentInterface
                 $this->esc($this->site->title),
                 $this->esc($this->site->absoluteUrl('/index.xml')),
             ),
+            ...$this->googleAnalyticsHead(),
             '<link rel="stylesheet" href="/assets/style.css">',
         ];
 
@@ -161,5 +162,38 @@ final class SiteDocument implements DocumentInterface
     private function esc(string $value): string
     {
         return \htmlspecialchars($value, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function googleAnalyticsHead(): array
+    {
+        if (!$this->site->googleAnalyticsEnabled()) {
+            return [];
+        }
+
+        $id = $this->site->googleAnalyticsId;
+        $jsonId = \json_encode($id, \JSON_THROW_ON_ERROR);
+
+        return [
+            '<link rel="dns-prefetch" href="https://www.googletagmanager.com">',
+            \sprintf(
+                '<script async defer src="https://www.googletagmanager.com/gtag/js?id=%s"></script>',
+                $this->esc($id),
+            ),
+            <<<HTML
+                <script>
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', {$jsonId}, {
+                    'anonymize_ip': true,
+                    'cookie_expires': 63072000,
+                    'send_page_view': true
+                  });
+                </script>
+                HTML,
+        ];
     }
 }

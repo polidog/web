@@ -22,10 +22,17 @@ final readonly class SiteConfig
     public function __construct(
         public string $siteUrl = 'https://polidog.jp',
         public string $disqusShortname = '',
+        public string $googleAnalyticsId = '',
+        public string $appEnv = 'production',
         public string $title = 'polidog lab',
         public string $description = 'polidog の個人サイト。技術のことと、日々のこと。',
         public string $author = 'polidog',
     ) {}
+
+    public function googleAnalyticsEnabled(): bool
+    {
+        return 'production' === $this->appEnv && '' !== $this->googleAnalyticsId;
+    }
 
     /**
      * canonical・OGP・RSS で使う絶対 URL。

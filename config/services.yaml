@@ -21,6 +21,12 @@ parameters:
 
   app.disqus_shortname: '%env(default:app.empty:DISQUS_SHORTNAME)%'
 
+  app.google_analytics_id: '%env(default:app.default_google_analytics_id:GOOGLE_ANALYTICS_ID)%'
+  app.default_google_analytics_id: 'G-BLT5Y4CHBC'
+
+  app.app_env: '%env(default:app.default_app_env:APP_ENV)%'
+  app.default_app_env: 'production'
+
   # `%env(default::VAR)%` は未設定時に **null** を返す。受け側は「空文字なら
   # 無効」で揃えてあるので、空文字を返すパラメータを既定値に指名する。
   app.empty: ''
@@ -81,6 +87,8 @@ services:
     arguments:
       $siteUrl: '%app.site_url%'
       $disqusShortname: '%app.disqus_shortname%'
+      $googleAnalyticsId: '%app.google_analytics_id%'
+      $appEnv: '%app.app_env%'
 
   # UserProvider をバインドすると Relayer が Authenticator を DI に登録し、
   # #[Auth] / requireAuth() / attempt() が動くようになる
