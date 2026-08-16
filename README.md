@@ -105,9 +105,13 @@ fly scale count 1        # SQLite の書き手を 1 つに保つ
 `FLY_API_TOKEN` として登録しておく:
 
 ```bash
-fly tokens create deploy -a polidog-jp
+fly tokens create deploy -a polidog-jp -x 720h
 gh secret set FLY_API_TOKEN
 ```
+
+`app not found` で失敗する場合は、`FLY_API_TOKEN` が `polidog-jp` 用ではないか、
+期限切れ・別アカウント/別organizationの token になっている。token を作り直して
+同じ secret 名で上書きする。
 
 `.github/workflows/fly-deploy.yml` には `workflow_dispatch` もあるので、
 GitHub の Actions 画面から手動デプロイもできる。SQLite volume は 1 台運用なので、
