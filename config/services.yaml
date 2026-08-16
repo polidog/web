@@ -107,6 +107,10 @@ services:
     arguments:
       $uploadsDir: '%app.uploads_dir%'
 
+  App\Service\OgpImageGenerator:
+    arguments:
+      $projectRoot: '%app.project_root%'
+
   # 取り込んだ画像の一時ファイルを uploads と同じファイルシステムに置くため、
   # MediaStorage と同じディレクトリを渡す（rename がデバイスをまたげない）。
   App\Mcp\ImageFetcher:

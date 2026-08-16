@@ -29,7 +29,7 @@ FROM dunglas/frankenphp:php8.5
 
 # curl と pdo_sqlite はベースイメージで有効。zip は composer の dist 展開用。
 # opcache は本番のリクエストコストを決めるので明示的に入れる。
-RUN install-php-extensions zip opcache
+RUN install-php-extensions zip opcache gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

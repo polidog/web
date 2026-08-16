@@ -21,6 +21,7 @@ final class PageMeta
     public function __construct(
         private readonly SiteDocument $document,
         private readonly SiteConfig $site,
+        private readonly OgpImageGenerator $ogp,
     ) {}
 
     public function apply(
@@ -39,7 +40,22 @@ final class PageMeta
 
         if (null !== $image && '' !== $image) {
             $this->document->setOgImage($this->site->absoluteUrl($image));
+
+            return;
         }
+
+        if ($this->shouldGenerateOgp($path)) {
+            try {
+                $this->document->setOgImage($this->site->absoluteUrl($this->ogp->generate($path, $title)));
+            } catch (\Throwable) {
+                // OGP 生成の失敗でページ本文までは落とさない。
+            }
+        }
+    }
+
+    private function shouldGenerateOgp(string $path): bool
+    {
+        return !\str_starts_with($path, '/admin') && !\str_starts_with($path, '/oauth');
     }
 
     /**
