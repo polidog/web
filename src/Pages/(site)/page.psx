@@ -19,7 +19,7 @@ use Polidog\UsePhp\Runtime\Element;
  */
 return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, SiteConfig $site): Closure {
     $ctx->cache(PageCache::home());
-    $meta->apply('/', '', $site->description);
+    $meta->apply('/', '', $site->description, image: '/assets/ogp/top.webp');
 
     return function () use ($posts): Element {
         $list = $posts->listPublished(1);
