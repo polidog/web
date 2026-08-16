@@ -367,6 +367,12 @@ Claude Chat の「カスタムコネクタ」に `https://polidog.jp/mcp` を入
   Caddy 側でも画像パスに `Content-Security-Policy: default-src 'none'; sandbox`
   と `nosniff` を付けて二重に止めている。必要になったらサニタイザを通すか、
   別ドメインから配信すること。
+- **`og:image` に WebP / AVIF を使わない。** X(Twitter) のカードクローラは
+  どちらも取得できず、**カードが丸ごと出なくなる**（画像だけ欠けるのではなく、
+  リンクがただの URL テキストになる）。自動生成は PNG（`OgpImageGenerator`）、
+  トップの手描き画像は JPEG（`public/assets/ogp/top.jpg`）。アイキャッチは
+  WebP でもアップロードできてしまうので、`PageMeta::usableAsOgImage()` が
+  形式を見て、読めない形式なら自動生成の PNG に差し替えている。
 - `composer.json` の `extra.relayer.structure_version` は
   `relayer init`/`upgrade` が管理する。手で編集しない。
 - `var/cache/` は生成物。`AGENTS.md` とこのファイルは `relayer init` が生成した

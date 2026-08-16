@@ -38,7 +38,7 @@ final class PageMeta
             ->setOgType($ogType)
         ;
 
-        if (null !== $image && '' !== $image) {
+        if (null !== $image && '' !== $image && $this->usableAsOgImage($image)) {
             $this->document->setOgImage($this->site->absoluteUrl($image));
 
             return;
@@ -46,7 +46,11 @@ final class PageMeta
 
         if ($this->shouldGenerateOgp($path)) {
             try {
-                $this->document->setOgImage($this->site->absoluteUrl($this->ogp->generate($path, $title)));
+                $this->document->setOgImage(
+                    $this->site->absoluteUrl($this->ogp->generate($path, $title)),
+                    OgpImageGenerator::WIDTH,
+                    OgpImageGenerator::HEIGHT,
+                );
             } catch (\Throwable) {
                 // OGP 生成の失敗でページ本文までは落とさない。
             }
@@ -56,6 +60,22 @@ final class PageMeta
     private function shouldGenerateOgp(string $path): bool
     {
         return !\str_starts_with($path, '/admin') && !\str_starts_with($path, '/oauth');
+    }
+
+    /**
+     * OGP に出して大丈夫な画像形式か。
+     *
+     * アップロードは WebP と AVIF も受け付ける（記事本文では使える）が、
+     * X(Twitter) のカードクローラはどちらも読めず、指定するとカードが
+     * 丸ごと出なくなる。アイキャッチがその形式だったときは og:image に
+     * 使わず、自動生成の PNG に落とす。
+     */
+    private function usableAsOgImage(string $image): bool
+    {
+        $path = \parse_url($image, \PHP_URL_PATH);
+        $extension = \strtolower(\pathinfo(\is_string($path) ? $path : $image, \PATHINFO_EXTENSION));
+
+        return \in_array($extension, ['png', 'jpg', 'jpeg', 'gif'], true);
     }
 
     /**

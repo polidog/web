@@ -28,6 +28,8 @@ final class SiteDocument implements DocumentInterface
     private string $canonical = '';
     private string $ogType = 'website';
     private string $ogImage = '';
+    private ?int $ogImageWidth = null;
+    private ?int $ogImageHeight = null;
 
     /** @var list<string> */
     private array $extraHead = [];
@@ -62,9 +64,16 @@ final class SiteDocument implements DocumentInterface
         return $this;
     }
 
-    public function setOgImage(string $url): self
+    /**
+     * 寸法は分かっているときだけ渡す。自動生成の OGP 画像は常に
+     * 1200x630 だが、記事のアイキャッチは任意サイズなので省略する
+     * （嘘の寸法を書くくらいなら、タグごと出さないほうがよい）。
+     */
+    public function setOgImage(string $url, ?int $width = null, ?int $height = null): self
     {
         $this->ogImage = $url;
+        $this->ogImageWidth = $width;
+        $this->ogImageHeight = $height;
 
         return $this;
     }
@@ -118,6 +127,7 @@ final class SiteDocument implements DocumentInterface
             \sprintf('<meta property="og:type" content="%s">', $this->esc($this->ogType)),
             \sprintf('<meta property="og:site_name" content="%s">', $this->esc($this->site->title)),
             '<meta name="twitter:card" content="summary_large_image">',
+            \sprintf('<meta name="twitter:site" content="@%s">', $this->esc($this->site->author)),
             \sprintf('<meta name="twitter:creator" content="@%s">', $this->esc($this->site->author)),
             \sprintf(
                 '<link rel="alternate" type="application/rss+xml" title="%s" href="%s">',
@@ -130,6 +140,26 @@ final class SiteDocument implements DocumentInterface
 
         if ('' !== $image) {
             $head[] = \sprintf('<meta property="og:image" content="%s">', $this->esc($image));
+
+            // X(Twitter) は og:image をフォールバックに使うが、twitter:image を
+            // 明示しておくほうが確実。og:image が WebP だとカードごと消えるので、
+            // ここに来る URL は PNG / JPEG であること（OgpImageGenerator を参照）。
+            $head[] = \sprintf('<meta name="twitter:image" content="%s">', $this->esc($image));
+
+            if (null !== $this->ogImageWidth && null !== $this->ogImageHeight) {
+                $head[] = \sprintf('<meta property="og:image:width" content="%d">', $this->ogImageWidth);
+                $head[] = \sprintf('<meta property="og:image:height" content="%d">', $this->ogImageHeight);
+            }
+
+            $type = match (\strtolower(\pathinfo(\parse_url($image, \PHP_URL_PATH) ?: $image, \PATHINFO_EXTENSION))) {
+                'png' => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'gif' => 'image/gif',
+                default => '',
+            };
+            if ('' !== $type) {
+                $head[] = \sprintf('<meta property="og:image:type" content="%s">', $type);
+            }
         }
 
         foreach ($this->extraHead as $html) {

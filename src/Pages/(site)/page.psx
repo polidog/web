@@ -19,7 +19,8 @@ use Polidog\UsePhp\Runtime\Element;
  */
 return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, SiteConfig $site): Closure {
     $ctx->cache(PageCache::home());
-    $meta->apply('/', '', $site->description, image: '/assets/ogp/top.webp');
+    // WebP にしないこと。X(Twitter) のクローラが読めず、カードが出なくなる。
+    $meta->apply('/', '', $site->description, image: '/assets/ogp/top.jpg');
 
     return function () use ($posts): Element {
         $list = $posts->listPublished(1);
