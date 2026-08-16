@@ -247,6 +247,63 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
   textarea の undo 履歴に残る挿入手段はこれしかない。`value` を直接
   書き換えると Ctrl+Z で戻せなくなる。
 
+### Claude コネクタ（MCP + OAuth）
+
+`/mcp` が remote MCP サーバー、`/oauth/*` と `/.well-known/*` がその認証。
+Claude Chat の「カスタムコネクタ」に `https://polidog.jp/mcp` を入れると繋がる。
+
+**認証を自前の OAuth 2.1 で組んでいる理由**は、Claude 側の選択肢がそれしか
+無いから。固定トークンをヘッダで渡す方式（`static_headers`）もあるが、
+ベータで段階展開中・early access 申請が要るので、アカウントによっては
+設定欄自体が出ない。OAuth なら URL を貼るだけで確実に繋がる。
+
+- **トランスポートはステートレス**（`Mcp-Session-Id` を使わない）。仕様は
+  POST への応答を SSE ではなく単一 JSON で返すことを認めていて、Relayer の
+  `Response` は本文が `?string` 1 つ ——ストリームを返す手段がそもそも無い。
+  `GET /mcp` は 405 を返して SSE を提供しない。
+- **未認証は必ず 401 + `WWW-Authenticate`。** 200 で `isError` を返すと
+  クライアントは OAuth を始めず、「ログインしてください」という文字列が
+  そのまま会話に流れて終わる。ここは仕様というより Claude の実装の都合。
+- **ツールの失敗は `isError`、呼び方の誤りは JSON-RPC エラー。** 前者は
+  モデルが読んで次の手を選び直せるが、後者にするとモデルは同じ呼び出しを
+  繰り返す。
+- **書き込みは `PostFormMapper` → `PostWriter` を素通しする。** 検証を
+  自前で書くと「管理画面では弾かれるのに MCP からは通る」ができる。
+  同じ理由で、**path を `normalizePath()` してから mapper に渡さない**
+  （先に整えるとスラッシュ無しの path が検証をすり抜ける）。引き当てだけは
+  正規化した形で行う。
+- **`update_post` は既存値で埋めてから保存する。** `PostWriter::save()` は
+  `PostInput` の中身で行を丸ごと上書きするので、渡されなかった項目を
+  埋めずに通すと本文もタグも空になる。
+- **`create_post` は path の重複を自分で見る。** `save()` は id 無しで
+  呼ぶと path 一致の行を黙って上書きするため（`PostWriter.php:57-59`）、
+  「新規作成」で既存記事が消える。
+- **`delete_post` は `confirm_path` を必須にする。** id を 1 つ取り違えた
+  だけで別の記事が消えるので、削除の前に必ず 1 度読ませる。
+- **OAuth のテーブルだけは読み書きとも tehilim。** 「読みは生 SQL」の
+  住み分けは PostRepository が tehilim で書けない 3 つに当たったからで、
+  OAuth のクエリは一意キーの lookup と insert/delete しかなく、その理由が
+  1 つも当てはまらない。
+- **平文の秘密は保存しない。** 認可コードもトークンも SHA-256 だけを
+  DB に入れる（DB ファイルは記事と同じ volume に載る）。
+- **同意画面は hidden で値を持ち回り、POST 後にもう一度検証する。**
+  usePHP の form action はページのパスだけでクエリを保持しないため。
+  改竄されても検証を通らないので、hidden を信用したことにはならない。
+- **検証に失敗した認可リクエストではリダイレクトしない。** その時点の
+  `redirect_uri` はまだ信用できず、飛ばすとこの認可サーバー自体が
+  オープンリダイレクタになる。エラーは同意画面に出して止める。
+- **`/admin/login` は `/oauth/authorize` から来た人を戻せるようにしてある。**
+  戻り先を URL で受け取ると任意の URL へ飛べる口ができるので、
+  クエリだけをセッションに預け、戻り先は `/oauth/authorize` 固定。
+- **取り込んだ画像の一時ファイルは `UPLOADS_DIR` の下に作る。**
+  `MediaStorage::store()` は `rename()` で動かすが、rename はデバイスを
+  またげない。本番の `/tmp` はイメージの中、uploads は volume の上なので、
+  システムの一時ディレクトリを使うと**本番だけ**保存に失敗する。
+- **画像取得の SSRF 対策は「解決した IP を見る」+「リダイレクトを自分で追う」。**
+  curl に `FOLLOWLOCATION` を任せると、リダイレクト先が内部アドレスに
+  化けても検査できない。解決済み IP は `CURLOPT_RESOLVE` で固定して、
+  検査と接続の間に DNS の答えが変わる隙間を消してある。
+
 ## 環境変数
 
 `.env` がモード切り替えを担う。`APP_ENV=dev` は `.psx` のオンザフライ
@@ -296,6 +353,15 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
   無く消える**（`_indexes` はこれで 4 本中 3 本が DB に届いておらず、
   `20260815124500000_missing_indexes` で入れ直した）。説明は文の中か
   ファイル末尾に置くこと。
+- **`curl_close()` を呼ばない。** PHP 8.0 以降は効果が無く、8.5 で
+  deprecated になった。呼ぶと警告がレスポンス本文の先頭に混ざり、
+  **JSON が壊れて `headers already sent` まで出る**（`ImageFetcher` が
+  これで一度壊れた）。ハンドルは参照が切れた時点で解放される。
+- **`config/services.yaml` のディレクトリ丸ごと登録に値オブジェクトを
+  巻き込まない。** `App\Auth\` や `App\Mcp\` の `resource:` は再帰的なので、
+  コンストラクタに `string $clientId` を取るような値オブジェクトが
+  混ざるとコンテナのコンパイルが落ち、**アプリごと起動しなくなる**。
+  `exclude:` に並べること。
 - **アップロードで SVG は受けない**（`MediaStorage::ALLOWED`）。SVG は XML なので
   スクリプトを持てて、`/images/...` は管理画面と同じオリジンで配信される。
   Caddy 側でも画像パスに `Content-Security-Policy: default-src 'none'; sandbox`

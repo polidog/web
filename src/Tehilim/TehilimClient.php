@@ -14,6 +14,9 @@ use App\Tehilim\Model\User;
 use App\Tehilim\Model\Post;
 use App\Tehilim\Model\Tag;
 use App\Tehilim\Model\Category;
+use App\Tehilim\Model\OauthClient;
+use App\Tehilim\Model\OauthAuthCode;
+use App\Tehilim\Model\OauthToken;
 
 final class TehilimClient extends BaseClient
 {
@@ -21,6 +24,9 @@ final class TehilimClient extends BaseClient
     public readonly Post $post;
     public readonly Tag $tag;
     public readonly Category $category;
+    public readonly OauthClient $oauthClient;
+    public readonly OauthAuthCode $oauthAuthCode;
+    public readonly OauthToken $oauthToken;
 
     public function __construct(Driver $driver)
     {
@@ -33,6 +39,12 @@ final class TehilimClient extends BaseClient
         $this->registerModel('Tag', $this->tag);
         $this->category = new Category($driver);
         $this->registerModel('Category', $this->category);
+        $this->oauthClient = new OauthClient($driver);
+        $this->registerModel('OauthClient', $this->oauthClient);
+        $this->oauthAuthCode = new OauthAuthCode($driver);
+        $this->registerModel('OauthAuthCode', $this->oauthAuthCode);
+        $this->oauthToken = new OauthToken($driver);
+        $this->registerModel('OauthToken', $this->oauthToken);
     }
 
     /**

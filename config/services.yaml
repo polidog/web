@@ -46,9 +46,22 @@ services:
 
   App\Auth\:
     resource: '../src/Auth/'
+    # 値オブジェクトと例外はサービスではない。ディレクトリ丸ごとの登録に
+    # 巻き込むと、コンテナのコンパイル時に「$clientId を解決できない」と
+    # 言われてアプリごと起動しなくなる。
+    exclude:
+      - '../src/Auth/Oauth/AuthorizationRequest.php'
+      - '../src/Auth/Oauth/OauthException.php'
 
   App\Http\:
     resource: '../src/Http/'
+
+  App\Mcp\:
+    resource: '../src/Mcp/'
+    # 引数ラッパと例外はサービスではない（App\Auth\ の exclude と同じ理由）。
+    exclude:
+      - '../src/Mcp/Arguments.php'
+      - '../src/Mcp/McpToolException.php'
 
   PDO:
     class: PDO
@@ -83,6 +96,12 @@ services:
       $siteUrl: '%app.site_url%'
 
   App\Service\MediaStorage:
+    arguments:
+      $uploadsDir: '%app.uploads_dir%'
+
+  # 取り込んだ画像の一時ファイルを uploads と同じファイルシステムに置くため、
+  # MediaStorage と同じディレクトリを渡す（rename がデバイスをまたげない）。
+  App\Mcp\ImageFetcher:
     arguments:
       $uploadsDir: '%app.uploads_dir%'
 

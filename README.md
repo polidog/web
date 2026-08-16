@@ -44,6 +44,36 @@ php bin/hash-password.php    # 平文を訊いて ADMIN_PASSWORD_HASH=... を出
 本番と同じ経路（FrankenPHP + Caddy + volume）で動かしたいときは
 `docker compose up --build`（→ http://localhost:8080）。
 
+## Claude から書く（MCP コネクタ）
+
+このサイト自身が **remote MCP サーバー**になっているので、Claude の
+「設定 > コネクタ > カスタムコネクタを追加」に次の URL を入れると、
+会話から記事を書いたり消したりできる。
+
+```
+https://polidog.jp/mcp
+```
+
+OAuth の入力欄は空のままでよい（クライアント登録は自動で行われる）。
+追加すると管理者ログインと同意画面が出て、そこで許可した相手だけが
+繋がる。使えるツールは 10 個:
+
+| ツール | できること |
+| --- | --- |
+| `list_posts` / `get_post` | 記事の一覧・取得（下書きも含む） |
+| `create_post` / `update_post` | 作成・更新（`update_post` は渡した項目だけ変える） |
+| `publish_post` / `unpublish_post` | 公開・下書きに戻す |
+| `delete_post` | 削除。`confirm_path` に path を渡さないと消えない |
+| `list_tags` / `list_media` | 既存のタグ・画像を調べる |
+| `upload_media_from_url` | 画像を URL から取り込んで `/images/...` にする |
+
+書き込みは管理画面とまったく同じ経路（`PostFormMapper` → `PostWriter`）を
+通るので、Markdown の変換・ETag の更新・Cloudflare の purge も同じように走る。
+
+認証は polidog.jp 自身が OAuth 2.1 の認可サーバーになって処理している
+（`/.well-known/*`・`/oauth/*`）。アクセストークンは 1 時間、リフレッシュは
+使うたびに入れ替わる。設計の詳細は [CLAUDE.md](./CLAUDE.md) を参照。
+
 ## 移行
 
 ```bash
@@ -102,6 +132,9 @@ fly ssh console -C "php /app/bin/refresh-caches.php"
 | --- | --- |
 | `src/Pages/(site)/` | 公開側。`(site)` はルートグループなので URL には出ない |
 | `src/Pages/admin/` | 管理画面 |
+| `src/Pages/mcp/`・`oauth/`・`.well-known/` | Claude コネクタ（MCP と OAuth） |
+| `src/Mcp/` | MCP のプロトコル層とツール |
+| `src/Auth/Oauth/` | OAuth 2.1 認可サーバー |
 | `src/Service/` | リポジトリ・保存・Markdown・purge |
 | `src/Support/` | 値オブジェクトと純粋関数（キャッシュ方針・slug・HTML 変換） |
 | `src/View/` | ページ間で共用する表示部品 |

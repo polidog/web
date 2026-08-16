@@ -42,6 +42,24 @@ final class AdminUserProvider implements UserProvider
         return '' !== $this->email && '' !== $this->passwordHash;
     }
 
+    /**
+     * 管理者の User.id。行がまだ無ければ null（ここでは作らない）。
+     *
+     * MCP から記事を保存するときの authorId に使う。あちらにはセッションが
+     * 無く Identity を受け取れないが、書き手は結局この 1 人しか居ないので、
+     * 管理画面から保存したものと同じ id が入るのが正しい。
+     */
+    public function adminId(): ?int
+    {
+        if (!$this->configured()) {
+            return null;
+        }
+
+        $user = $this->db->user->findUnique(['where' => ['email' => $this->email]]);
+
+        return null !== $user ? $user['id'] : null;
+    }
+
     public function findByIdentifier(string $identifier): ?Credentials
     {
         if (!$this->configured()) {

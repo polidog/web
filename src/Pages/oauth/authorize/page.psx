@@ -1,0 +1,162 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Auth\Oauth\AuthorizationRequest;
+use App\Auth\Oauth\OauthException;
+use App\Auth\Oauth\OauthServer;
+use App\Service\PageMeta;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Auth\AuthenticatorInterface;
+use Polidog\Relayer\Auth\SessionStorage;
+use Polidog\Relayer\Http\Request;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * 同意画面。Claude を polidog.jp に繋ぐとき、ブラウザがここに来る。
+ *
+ * 検証に失敗したときリダイレクトを返さないのは、その時点の redirect_uri が
+ * まだ信用できないから —— 検証前の URL へ飛ばすと、この認可サーバー自体が
+ * オープンリダイレクタになる。エラーはこの画面に出して止める。
+ * 唯一リダイレクトするのは「拒否」を押したときで、それは検証済みの
+ * redirect_uri へ `error=access_denied` を返す正規の応答。
+ *
+ * POST 時にクエリ文字列は戻ってこないので、必要な値はフォームの hidden で
+ * 持ち回り、**受け取り直した値をもう一度 authorizationRequest() に通す**。
+ * 改竄されても検証を抜けられないので、hidden を信用したことにはならない。
+ */
+return function (
+    PageContext $ctx,
+    Request $request,
+    PageMeta $meta,
+    AuthenticatorInterface $auth,
+    SessionStorage $session,
+    OauthServer $oauth,
+): Closure {
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/oauth/authorize', '接続の許可');
+
+    if (!$auth->check()) {
+        // ログインへ送る前にクエリを預ける。戻り先そのものは
+        // /oauth/authorize に固定してあるので、任意の URL には飛ばない。
+        $session->set(OauthServer::PENDING_SESSION_KEY, $request->allQuery());
+        $ctx->redirect('/admin/login');
+    }
+
+    $error = null;
+    $authRequest = null;
+
+    // GET のときだけクエリを見る。POST では hidden から組み直す。
+    if (!$request->isPost()) {
+        try {
+            $authRequest = $oauth->authorizationRequest($request->allQuery());
+        } catch (OauthException $exception) {
+            $error = $exception->getMessage();
+        }
+    }
+
+    $consent = $ctx->action('consent', function (array $form) use ($oauth, $ctx, &$error): void {
+        try {
+            $submitted = $oauth->authorizationRequest($form);
+        } catch (OauthException $exception) {
+            $error = $exception->getMessage();
+
+            return;
+        }
+
+        $ctx->redirect(
+            'approve' === (string) ($form['decision'] ?? '')
+                ? $oauth->approve($submitted)
+                : $oauth->deny($submitted),
+            302,
+        );
+    });
+
+    return function () use ($consent, $request, &$error, &$authRequest): Element {
+        if (null !== $error || !$authRequest instanceof AuthorizationRequest) {
+            return (
+                <div className="mx-auto max-w-sm px-5 pt-16">
+                    <h1 className="text-[1.375rem] font-semibold tracking-tight text-ink">接続を許可できません</h1>
+                    <div className="mt-6">
+                        {AdminComponents::notice('error', $error ?? '認可リクエストが不正です。')}
+                    </div>
+                    <p className="mt-8 text-sm text-muted">
+                        Claude 側でコネクタを追加し直すと解決することがあります。
+                    </p>
+                </div>
+            );
+        }
+
+        // hidden で持ち回る値。POST 後にもう一度検証されるので、
+        // ここに出ているのは「クライアントが要求してきた内容」そのまま。
+        $carry = [
+            'client_id' => $authRequest->clientId,
+            'redirect_uri' => $authRequest->redirectUri,
+            'response_type' => 'code',
+            'code_challenge' => $authRequest->codeChallenge,
+            'code_challenge_method' => 'S256',
+            'state' => $authRequest->state,
+            'resource' => (string) ($request->query('resource') ?? ''),
+        ];
+
+        // 子は「配列 1 つ」に均してから渡す。usePHP が平坦化するのは
+        // 子が配列 1 つだけのときで、配列と要素を並べるとネストした配列が
+        // そのままレンダラに届いて TypeError になる。
+        $formChildren = \array_values(\array_map(
+            static fn (string $name): Element => H::input(
+                type: 'hidden',
+                name: $name,
+                value: $carry[$name],
+            ),
+            \array_keys($carry),
+        ));
+
+        $formChildren[] = H::button(
+            type: 'submit',
+            name: 'decision',
+            value: 'approve',
+            className: AdminComponents::BUTTON . ' w-full py-3',
+            children: '許可する',
+        );
+        $formChildren[] = H::button(
+            type: 'submit',
+            name: 'decision',
+            value: 'deny',
+            className: AdminComponents::BUTTON_QUIET . ' w-full py-3',
+            children: '拒否する',
+        );
+
+        return (
+            <div className="mx-auto max-w-sm px-5 pt-16">
+                <h1 className="text-[1.375rem] font-semibold tracking-tight text-ink">接続を許可しますか</h1>
+
+                <p className="mt-6 text-sm leading-relaxed text-muted">
+                    次のアプリケーションが polidog.jp の記事の読み書きを求めています。
+                </p>
+
+                <dl className="mt-6 flex flex-col gap-4">
+                    <div>
+                        <dt className={AdminComponents::LABEL}>アプリケーション</dt>
+                        <dd className="mt-1 text-ink">{$authRequest->clientName}</dd>
+                    </div>
+                    <div>
+                        <dt className={AdminComponents::LABEL}>戻り先</dt>
+                        <dd className="mt-1 font-mono text-sm text-ink">{$authRequest->redirectHost()}</dd>
+                    </div>
+                </dl>
+
+                <p className="mt-6 text-sm leading-relaxed text-muted">
+                    許可すると、このアプリケーションは記事の作成・更新・削除と画像のアップロードが
+                    できるようになります。心当たりが無いときは拒否してください。
+                </p>
+
+                <form action={$consent} method="post" className="mt-8 flex flex-col gap-3">
+                    {$formChildren}
+                </form>
+            </div>
+        );
+    };
+};
