@@ -58,15 +58,38 @@ final class AdminComponents
         'inline-flex items-center justify-center rounded-md border border-hairline px-4 py-2 text-sm '
         . 'text-muted transition-colors hover:text-ink';
 
-    /** Markdown の記法ボタン。`data-md` の値は admin.js が解釈する。 */
+    /**
+     * Markdown の記法ボタン。`data-md` の値は admin.js が解釈する。
+     *
+     * ショートカットのあるものは title に併記する（押せることを知る場所が
+     * ここしかない）。修飾キーの表記が「⌘ / Ctrl」の 2 通りなのは、
+     * 書いている端末が Mac とは限らないため。
+     */
     private const array MARKDOWN_TOOLS = [
         ['key' => 'h2', 'label' => 'H2', 'title' => '見出し'],
-        ['key' => 'bold', 'label' => 'B', 'title' => '太字'],
-        ['key' => 'italic', 'label' => 'I', 'title' => '斜体'],
-        ['key' => 'link', 'label' => 'link', 'title' => 'リンク'],
-        ['key' => 'code', 'label' => 'code', 'title' => 'コードブロック'],
+        ['key' => 'h3', 'label' => 'H3', 'title' => '小見出し'],
+        ['key' => 'bold', 'label' => 'B', 'title' => '太字（⌘ / Ctrl + B）'],
+        ['key' => 'italic', 'label' => 'I', 'title' => '斜体（⌘ / Ctrl + I）'],
+        ['key' => 'link', 'label' => 'link', 'title' => 'リンク（⌘ / Ctrl + K）'],
+        ['key' => 'inlineCode', 'label' => 'code', 'title' => 'インラインコード'],
+        ['key' => 'code', 'label' => 'block', 'title' => 'コードブロック'],
         ['key' => 'quote', 'label' => 'quote', 'title' => '引用'],
         ['key' => 'list', 'label' => 'list', 'title' => '箇条書き'],
+        ['key' => 'olist', 'label' => '1.', 'title' => '番号つき箇条書き'],
+        ['key' => 'table', 'label' => 'table', 'title' => '表'],
+        ['key' => 'image', 'label' => 'image', 'title' => '画像を選んでアップロード'],
+    ];
+
+    /**
+     * 本文欄の下に出す操作の早見表。ツールバーに無い（キーでしか使えない）
+     * ものだけを並べる —— ボタンのあるものは title に書いてある。
+     */
+    private const array EDITOR_HINTS = [
+        'Enter でリスト・引用を継続',
+        'Tab / Shift + Tab でネスト',
+        'URL を貼るとリンクになる',
+        '画像はドロップ・貼り付け',
+        '⌘ / Ctrl + S で保存',
     ];
 
     /**
@@ -153,7 +176,19 @@ final class AdminComponents
             self::titleField($value('title')),
             self::pathField($value('path')),
             self::toolbar(),
+            self::draftNotice(),
             self::panes($value('body')),
+            self::hints(),
+            // 「画像」ボタンが開くファイル選択。name を持たせないのは、
+            // 保存フォームの POST に混ぜないため（送るのは別口の
+            // /admin/media/upload で、admin.js が fetch する）。
+            new Element('input', [
+                'type' => 'file',
+                'accept' => 'image/*',
+                'multiple' => true,
+                'hidden' => true,
+                'data-editor-file' => 'true',
+            ]),
             self::metaFields($value, $tags, $categories, $withTaxonomy),
             self::actionBar($value, $post, $indexHref, $indexLabel, null !== $deleteAction),
         ];
@@ -169,6 +204,9 @@ final class AdminComponents
                 'data-preview' => 'off',
                 'data-preview-url' => '/admin/preview',
                 'data-upload-url' => '/admin/media/upload',
+                // 書きかけを localStorage に退避するときのキー。保存先 URL は
+                // 記事ごとに違う（新規と編集も別）ので、そのまま識別子になる。
+                'data-draft-key' => $saveAction,
             ], $body),
         ];
 
@@ -416,6 +454,12 @@ final class AdminComponents
     /**
      * 本文欄とプレビュー。横に並ぶかどうかは `data-preview` を見る CSS が
      * 決める（`assets/tailwind.css` の `.editor-panes`）。
+     *
+     * 級と行間は読む側ではなく**書く側**に寄せてある。等幅 13px・行間 1.6 は
+     * ソースの塊を眺めるには足りるが、日本語を打ち続けると行が詰まって
+     * 現在行を見失う。`editor-body` で 14px / 1.9 に開き、タブ幅も 2 に
+     * 揃えている（Tab は admin.js がスペース 2 個に置き換えるので、
+     * 貼り付けで入った素のタブだけが tab-size を見る）。
      */
     private static function panes(string $body): Element
     {
@@ -424,12 +468,15 @@ final class AdminComponents
             'data-editor-body' => 'true',
             'aria-label' => '本文（Markdown）',
             'spellcheck' => 'false',
-            'className' => 'block h-[70vh] min-h-[24rem] w-full resize-y rounded-lg bg-raised p-5 '
-                . 'font-mono text-[0.8125rem] leading-relaxed text-ink placeholder:text-faint',
+            // 行間はクラスで持たせる。`.editor-body` の側に書くと、あとから
+            // 来る utilities レイヤーの `text-sm`（line-height 込み）に負ける。
+            'className' => 'editor-body block h-[70vh] min-h-[24rem] w-full resize-y rounded-lg bg-raised '
+                . 'p-5 font-mono text-sm leading-[1.9] text-ink placeholder:text-faint',
             'placeholder' => 'Markdown で書く。画像はドロップか貼り付けでアップロードできる。',
         ], [$body]);
 
         $preview = new Element('div', [
+            'data-editor-preview-pane' => 'true',
             'className' => 'editor-preview h-[70vh] min-h-[24rem] overflow-y-auto rounded-lg bg-raised p-6',
         ], [
             new Element('div', [
@@ -441,6 +488,50 @@ final class AdminComponents
         ]);
 
         return H::div(className: 'editor-panes', children: [$textarea, $preview]);
+    }
+
+    /**
+     * 書きかけの復元を促す帯。中身は admin.js が入れるので、ここでは
+     * 器だけを hidden で置く（初回描画では出さない）。
+     */
+    private static function draftNotice(): Element
+    {
+        $button = static fn (string $key, string $label): Element => new Element('button', [
+            'type' => 'button',
+            'data-editor-draft-action' => $key,
+            'className' => 'rounded px-2 py-1 text-[0.75rem] text-muted '
+                . 'transition-colors hover:bg-surface hover:text-ink',
+        ], [$label]);
+
+        return new Element('div', [
+            'data-editor-draft' => 'true',
+            'hidden' => true,
+            'className' => 'flex flex-wrap items-center gap-3 rounded-md bg-raised px-4 py-3 text-[0.8125rem]',
+        ], [
+            new Element('span', [
+                'data-editor-draft-label' => 'true',
+                'className' => 'text-ink',
+            ], ['']),
+            H::div(
+                className: 'ml-auto flex items-center gap-1',
+                children: [$button('restore', '復元する'), $button('discard', '破棄する')],
+            ),
+        ]);
+    }
+
+    /**
+     * 本文欄の下の早見表。キーでしか使えない操作を、書きながら目に入る
+     * 位置に置く（ボタンのあるものは title に書いてある）。
+     */
+    private static function hints(): Element
+    {
+        return H::p(
+            className: 'flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] text-faint',
+            children: \array_map(
+                static fn (string $hint): Element => H::span(children: $hint),
+                self::EDITOR_HINTS,
+            ),
+        );
     }
 
     /**

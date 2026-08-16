@@ -96,6 +96,16 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /*
+   * hidden 属性は「まだ出さない」の意味で使う（エディタの未保存インジケータ、
+   * 書きかけの復元帯）。normalize の `[hidden] { display: none }` は詳細度が
+   * ユーティリティと並ぶので、`flex` などが載っている要素では負ける
+   * ——属性を消すまで出ない、を確実にするためここで押し切る。
+   */
+  [hidden] {
+    display: none !important;
+  }
+
   /* キーボード操作でどこにいるか分かること。罫線を削ったぶんここは太く。 */
   :focus-visible {
     outline: 2px solid rgb(var(--color-accent));
@@ -186,6 +196,28 @@
   /* プレビューは記事の見た目を確かめる場所なので、本文と同じ prose で組む。 */
   .editor-preview .prose {
     @apply max-w-none text-[0.9375rem];
+  }
+
+  /*
+   * 本文欄。tab-size が効くのは貼り付けで入った素のタブだけで、キーの Tab
+   * は admin.js がスペース 2 個に置き換えている（Markdown のリストは
+   * タブ幅の解釈がパーサ次第で、スペースのほうが事故らない）。
+   *
+   * 級と行間は `leading-[1.9]` としてクラス側にある。ここに書くと
+   * utilities の `text-sm` が持つ line-height に上書きされる。
+   */
+  .editor-body {
+    tab-size: 2;
+  }
+
+  /*
+   * 画像をドラッグしている間、落とせる場所を示す。ここだけ破線を引くのは
+   * 「押せる面」ではなく「今この操作の受け先」を指すため（罫線を引かない
+   * 方針は静止した画面の話で、操作中のフィードバックはその外）。
+   */
+  .editor-body[data-dragging='on'] {
+    outline: 2px dashed rgb(var(--color-accent));
+    outline-offset: -6px;
   }
 }
 

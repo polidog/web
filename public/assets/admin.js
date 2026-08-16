@@ -9,13 +9,18 @@
  * 触る相手は AdminComponents::editor() が出す DOM で、契約は data 属性:
  *
  *   [data-editor]                フォーム本体。data-preview / data-preview-url /
- *                                data-upload-url を持つ
+ *                                data-upload-url / data-draft-key を持つ
  *   [data-editor-body]           本文の textarea
  *   [data-editor-preview]        プレビューの差し込み先
+ *   [data-editor-preview-pane]   プレビュー側のスクロール箱（同期する相手）
  *   [data-editor-preview-toggle] プレビューの開閉
  *   [data-editor-count]          文字数
  *   [data-editor-status]         アップロードなどの途中経過
  *   [data-editor-dirty]          未保存インジケータ
+ *   [data-editor-file]           「画像」ボタンが開くファイル選択
+ *   [data-editor-draft]          書きかけの復元を促す帯（既定は hidden）
+ *   [data-editor-draft-label]    その文言の差し込み先
+ *   [data-editor-draft-action]   restore / discard
  *   [data-md]                    Markdown の記法ボタン
  *   [data-copy]                  クリップボードにコピー（画像一覧）
  *   [data-confirm]               押す前に確認する（削除）
@@ -24,6 +29,18 @@
   'use strict';
 
   var PREVIEW_KEY = 'admin:preview';
+  var DRAFT_PREFIX = 'admin:draft:';
+  var INDENT = '  ';
+
+  /*
+   * 行頭の記法。Enter の継続と Tab のネストが見るのはこれ 1 本。
+   *
+   *   1: インデント  2: 箇条書きの記号  3: 番号  4: 番号の後ろ（. か )）
+   *
+   * 引用は `>` のあとの空白が無くても成立するので `\s?`。番号リストを
+   * `\d+` で拾うのは、継続のときに +1 して振り直すため。
+   */
+  var LINE_MARKER = /^([ \t]*)(?:([-*+])[ \t]+|(\d+)([.)])[ \t]+|>[ \t]?)/;
 
   function initConfirm() {
     var buttons = document.querySelectorAll('[data-confirm]');
@@ -71,10 +88,12 @@
 
     var body = form.querySelector('[data-editor-body]');
     var preview = form.querySelector('[data-editor-preview]');
+    var previewPane = form.querySelector('[data-editor-preview-pane]');
     var toggle = form.querySelector('[data-editor-preview-toggle]');
     var count = form.querySelector('[data-editor-count]');
     var status = form.querySelector('[data-editor-status]');
     var dirtyMark = form.querySelector('[data-editor-dirty]');
+    var file = form.querySelector('[data-editor-file]');
     var dirty = false;
     var timer = null;
     var rendered = null;
@@ -158,42 +177,138 @@
      * 残る挿入手段はこれしかない（value を直接書き換えると Ctrl+Z で
      * 戻せなくなり、書いている最中のエディタとしては致命的）。
      * 使えない環境では setRangeText に落とす。
+     *
+     * 空文字を渡すと「選択範囲を消す」の意味になる。execCommand は
+     * insertText に空文字を渡すと false を返す実装があるので、削除は
+     * delete コマンドでやる（こちらも undo 履歴に残る）。
      */
     function insert(text) {
       body.focus();
-      if (!document.execCommand || !document.execCommand('insertText', false, text)) {
+
+      var done = false;
+      if (document.execCommand) {
+        done = '' === text
+          ? document.execCommand('delete')
+          : document.execCommand('insertText', false, text);
+      }
+
+      if (!done) {
         var start = body.selectionStart;
         body.setRangeText(text, start, body.selectionEnd, 'end');
       }
+
       markDirty();
       updateCount();
       schedule();
     }
 
-    function surround(before, after) {
-      var selected = body.value.slice(body.selectionStart, body.selectionEnd);
-      var caret = body.selectionStart + before.length + selected.length;
-      insert(before + selected + after);
-      if ('' === selected) {
-        // 何も選んでいなければ、囲みの内側にカーソルを置く。
-        body.setSelectionRange(caret, caret);
-      }
+    // カーソル位置 pos を含む行の範囲。
+    function lineAt(pos) {
+      var end = body.value.indexOf('\n', pos);
+
+      return {
+        start: body.value.lastIndexOf('\n', pos - 1) + 1,
+        end: end < 0 ? body.value.length : end,
+      };
     }
 
-    // 行頭の記法（見出し・引用・箇条書き）。選択が複数行なら全部の行に付ける。
-    function prefixLines(prefix) {
-      var start = body.value.lastIndexOf('\n', body.selectionStart - 1) + 1;
+    /*
+     * 選択を before / after で囲む。すでに囲まれていれば外す —— 太字に
+     * したい気持ちと戻したい気持ちは同じキーで来るので、⌘B は必ずトグル。
+     * 囲んだあとも選択を保つのは、続けて別の装飾を重ねられるようにするため。
+     */
+    function surround(before, after) {
+      var start = body.selectionStart;
       var end = body.selectionEnd;
-      var lines = body.value.slice(start, end).split('\n');
+      var selected = body.value.slice(start, end);
 
-      body.setSelectionRange(start, end);
-      insert(
-        lines
-          .map(function (line) {
-            return line.indexOf(prefix) === 0 ? line : prefix + line;
-          })
-          .join('\n')
-      );
+      // 選択の「外側」が囲みになっている（**|foo|** の形で中だけ選んだ）
+      if (
+        body.value.slice(start - before.length, start) === before &&
+        body.value.slice(end, end + after.length) === after
+      ) {
+        body.setSelectionRange(start - before.length, end + after.length);
+        insert(selected);
+        body.setSelectionRange(start - before.length, start - before.length + selected.length);
+        return;
+      }
+
+      // 選択が囲みごと（|**foo**| の形で囲みも含めて選んだ）
+      if (
+        selected.length >= before.length + after.length &&
+        selected.slice(0, before.length) === before &&
+        selected.slice(selected.length - after.length) === after
+      ) {
+        var inner = selected.slice(before.length, selected.length - after.length);
+        insert(inner);
+        body.setSelectionRange(start, start + inner.length);
+        return;
+      }
+
+      insert(before + selected + after);
+      body.setSelectionRange(start + before.length, start + before.length + selected.length);
+    }
+
+    /*
+     * 行頭の記法（見出し・引用・箇条書き）。選択が複数行なら全部の行に付ける。
+     * 全部の行がすでに付いていれば外す（囲みと同じくトグル）。
+     *
+     * @param {function(number): string} prefix 行番号 → 付ける文字列
+     */
+    function prefixLines(prefix) {
+      var first = lineAt(body.selectionStart);
+      var last = lineAt(body.selectionEnd);
+      var lines = body.value.slice(first.start, last.end).split('\n');
+
+      var attached = lines.every(function (line, i) {
+        return line.indexOf(prefix(i)) === 0;
+      });
+
+      var next = lines
+        .map(function (line, i) {
+          if (attached) {
+            return line.slice(prefix(i).length);
+          }
+
+          // 別の行頭記法が付いていれば置き換える（H2 → 引用が 1 手で済む）
+          var marker = LINE_MARKER.exec(line);
+          var heading = /^#{1,6} /.exec(line);
+          var bare = line.slice(marker ? marker[0].length : heading ? heading[0].length : 0);
+
+          return prefix(i) + bare;
+        })
+        .join('\n');
+
+      body.setSelectionRange(first.start, last.end);
+      insert(next);
+      body.setSelectionRange(first.start, first.start + next.length);
+    }
+
+    function fixed(text) {
+      return function () {
+        return text;
+      };
+    }
+
+    /*
+     * リンク。URL は空にして括弧の中にキャレットを置く —— そこへ貼り付ける
+     * のがいちばん多い動きで、ダミーの https:// は毎回消す手間になる。
+     */
+    function insertLink() {
+      var start = body.selectionStart;
+      var selected = body.value.slice(start, body.selectionEnd);
+      var caret = start + selected.length + 3;
+
+      insert('[' + selected + ']()');
+      body.setSelectionRange(caret, caret);
+    }
+
+    function insertTable() {
+      var head = '\n| 見出し | 見出し |\n| --- | --- |\n|  |  |\n';
+      var caret = body.selectionStart + head.indexOf('|  |') + 2;
+
+      insert(head);
+      body.setSelectionRange(caret, caret);
     }
 
     function applyTool(key) {
@@ -201,17 +316,107 @@
         surround('**', '**');
       } else if (key === 'italic') {
         surround('*', '*');
+      } else if (key === 'inlineCode') {
+        surround('`', '`');
       } else if (key === 'link') {
-        surround('[', '](https://)');
+        insertLink();
       } else if (key === 'code') {
         surround('\n```\n', '\n```\n');
       } else if (key === 'h2') {
-        prefixLines('## ');
+        prefixLines(fixed('## '));
+      } else if (key === 'h3') {
+        prefixLines(fixed('### '));
       } else if (key === 'quote') {
-        prefixLines('> ');
+        prefixLines(fixed('> '));
       } else if (key === 'list') {
-        prefixLines('- ');
+        prefixLines(fixed('- '));
+      } else if (key === 'olist') {
+        prefixLines(function (i) {
+          return i + 1 + '. ';
+        });
+      } else if (key === 'table') {
+        insertTable();
+      } else if (key === 'image') {
+        if (file) {
+          file.click();
+        }
       }
+    }
+
+    /*
+     * Enter でリスト・引用を継げる。項目が空のまま Enter を押したときは
+     * 記法のほうを外す（箇条書きを終える動き）——ここが無いと、リストを
+     * 抜けるたびに手で行頭を消すことになる。
+     *
+     * 戻り値 true で既定の改行を止める。
+     */
+    function continueLine() {
+      if (body.selectionStart !== body.selectionEnd) {
+        return false;
+      }
+
+      var line = lineAt(body.selectionStart);
+      var before = body.value.slice(line.start, body.selectionStart);
+      var marker = LINE_MARKER.exec(before);
+
+      if (!marker) {
+        return false;
+      }
+
+      // 記法だけの行 → 記法を消して抜ける
+      if ('' === before.slice(marker[0].length).trim()) {
+        body.setSelectionRange(line.start, body.selectionStart);
+        insert('');
+        return true;
+      }
+
+      // 番号リストだけは振り直す。ほかは同じ記法をそのまま次の行へ。
+      insert(
+        '\n' +
+          (undefined === marker[3]
+            ? marker[0]
+            : marker[1] + (parseInt(marker[3], 10) + 1) + marker[4] + ' ')
+      );
+
+      return true;
+    }
+
+    /*
+     * Tab でネスト、Shift+Tab で戻す。奪うのは「リスト・引用の行にいる」か
+     * 「複数行を選んでいる」ときだけ —— それ以外で奪うと、キーボードだけで
+     * 本文欄から出られなくなる。
+     */
+    function indent(back) {
+      var first = lineAt(body.selectionStart);
+      var last = lineAt(body.selectionEnd);
+      var multiline = first.start !== last.start;
+
+      if (!multiline && !LINE_MARKER.test(body.value.slice(first.start, first.end))) {
+        return false;
+      }
+
+      var lines = body.value.slice(first.start, last.end).split('\n');
+      var next = lines
+        .map(function (line) {
+          return back ? line.replace(/^[ \t]{1,2}/, '') : INDENT + line;
+        })
+        .join('\n');
+
+      var caret = body.selectionStart - first.start;
+      var shift = next.split('\n')[0].length - lines[0].length;
+
+      body.setSelectionRange(first.start, last.end);
+      insert(next);
+
+      if (multiline) {
+        body.setSelectionRange(first.start, first.start + next.length);
+      } else {
+        // 行頭にキャレットがある状態で戻すと first.start より前を指しうる
+        var at = first.start + Math.max(0, caret + shift);
+        body.setSelectionRange(at, at);
+      }
+
+      return true;
     }
 
     /*
@@ -233,6 +438,10 @@
       if (images.length === 0 || !token) {
         return;
       }
+
+      // 落とした位置を覚えておく。アップロードを待つあいだも書き続けられる
+      // ので、完了したときのカーソルは別の場所にあることがある。
+      var anchor = body.selectionStart;
 
       setStatus('アップロード中…');
 
@@ -259,6 +468,8 @@
 
       Promise.all(pending)
         .then(function (urls) {
+          var at = Math.min(anchor, body.value.length);
+          body.setSelectionRange(at, at);
           insert(
             urls
               .map(function (url) {
@@ -273,17 +484,195 @@
         });
     }
 
+    /*
+     * 書きかけの退避。beforeunload の確認だけでは、タブが落ちたときや
+     * 「このページを離れる」を押し間違えたときに戻せない。localStorage に
+     * 逃がしておき、次に同じ編集画面を開いたときに復元を持ちかける。
+     *
+     * キーは保存先の URL（記事ごとに違い、新規と編集も別）。
+     */
+    var draftKey = DRAFT_PREFIX + (form.dataset.draftKey || form.getAttribute('action') || '');
+    var draftNode = form.querySelector('[data-editor-draft]');
+    var draftLabel = form.querySelector('[data-editor-draft-label]');
+    var title = form.querySelector('input[name="title"]');
+    var draftTimer = null;
+
+    function writeDraft() {
+      try {
+        window.localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            title: title ? title.value : '',
+            body: body.value,
+            at: new Date().toISOString(),
+          })
+        );
+      } catch (e) {
+        /* 容量やプライベートブラウジングで書けなくても編集自体は続く */
+      }
+    }
+
+    function clearDraft() {
+      try {
+        window.localStorage.removeItem(draftKey);
+      } catch (e) {
+        /* 消せなくても、次に開いたとき本文が同じなら持ちかけない */
+      }
+    }
+
+    function scheduleDraft() {
+      window.clearTimeout(draftTimer);
+      draftTimer = window.setTimeout(writeDraft, 1000);
+    }
+
+    function offerDraft() {
+      var draft = null;
+      try {
+        draft = JSON.parse(window.localStorage.getItem(draftKey) || 'null');
+      } catch (e) {
+        return;
+      }
+
+      // サーバにある本文と同じなら、退避は用済み。
+      if (!draft || !draftNode || draft.body === body.value) {
+        clearDraft();
+        return;
+      }
+
+      if (draftLabel) {
+        draftLabel.textContent =
+          '保存していない書きかけがあります（' +
+          new Date(draft.at).toLocaleString('ja-JP', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }) +
+          '）。';
+      }
+
+      draftNode.removeAttribute('hidden');
+
+      var buttons = draftNode.querySelectorAll('[data-editor-draft-action]');
+      for (var n = 0; n < buttons.length; n++) {
+        buttons[n].addEventListener('click', function (event) {
+          if (event.currentTarget.dataset.editorDraftAction === 'restore') {
+            if (title && draft.title) {
+              title.value = draft.title;
+            }
+            // 全選択してから流し込む。undo 履歴に残るので Ctrl+Z で戻せる。
+            body.focus();
+            body.setSelectionRange(0, body.value.length);
+            insert(draft.body);
+          } else {
+            clearDraft();
+          }
+          draftNode.setAttribute('hidden', 'hidden');
+        });
+      }
+    }
+
+    function setDragging(on) {
+      if (on) {
+        body.setAttribute('data-dragging', 'on');
+      } else {
+        body.removeAttribute('data-dragging');
+      }
+    }
+
+    /*
+     * 本文とプレビューのスクロールを比率で合わせる。行単位で対応を取るには
+     * Markdown を行までさかのぼって追う必要があり、サーバ変換の方針
+     * （ブラウザにパーサを置かない）と噛み合わないので、割り切って比率で。
+     *
+     * こちらが動かした相手からも scroll が飛んでくるので、それを跳ね返すと
+     * 2 つの箱が押し合いになる。直前に動かされた側からの scroll は少しの
+     * あいだ無視する —— 動かしている側が主、で決まる。
+     *
+     * 時刻で見るのは、requestAnimationFrame が止まる状況（画面に出ていない
+     * タブなど）でも解除されるようにするため。フラグを rAF で戻す作りだと、
+     * そこで固まったまま片方向が死ぬ。
+     */
+    var pushedTo = null;
+    var pushedAt = 0;
+
+    function bindSync(source, target) {
+      source.addEventListener('scroll', function () {
+        if (form.dataset.preview !== 'on') {
+          return;
+        }
+
+        if (source === pushedTo && new Date().getTime() - pushedAt < 120) {
+          return;
+        }
+
+        var range = source.scrollHeight - source.clientHeight;
+        var targetRange = target.scrollHeight - target.clientHeight;
+
+        if (range <= 0 || targetRange <= 0) {
+          return;
+        }
+
+        pushedTo = target;
+        pushedAt = new Date().getTime();
+        target.scrollTop = (source.scrollTop / range) * targetRange;
+      });
+    }
+
     body.addEventListener('input', function () {
       markDirty();
       updateCount();
       schedule();
+      scheduleDraft();
+    });
+
+    /*
+     * IME の変換中は何もしない。変換確定の Enter がここまで来ると、
+     * 日本語を打つたびにリストが増える。
+     */
+    body.addEventListener('keydown', function (event) {
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+
+      var mod = event.metaKey || event.ctrlKey;
+
+      if (mod && !event.altKey) {
+        var key = event.key.toLowerCase();
+
+        if (key === 'b' || key === 'i' || key === 'k') {
+          event.preventDefault();
+          applyTool(key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'link');
+        }
+
+        return;
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+        if (continueLine()) {
+          event.preventDefault();
+        }
+
+        return;
+      }
+
+      if (event.key === 'Tab' && !event.altKey && indent(event.shiftKey)) {
+        event.preventDefault();
+      }
     });
 
     body.addEventListener('dragover', function (event) {
       event.preventDefault();
+      setDragging(true);
+    });
+
+    body.addEventListener('dragleave', function () {
+      setDragging(false);
     });
 
     body.addEventListener('drop', function (event) {
+      setDragging(false);
+
       if (event.dataTransfer && event.dataTransfer.files.length > 0) {
         event.preventDefault();
         uploadFiles(event.dataTransfer.files);
@@ -291,16 +680,44 @@
     });
 
     body.addEventListener('paste', function (event) {
-      if (event.clipboardData && event.clipboardData.files.length > 0) {
+      if (!event.clipboardData) {
+        return;
+      }
+
+      if (event.clipboardData.files.length > 0) {
         event.preventDefault();
         uploadFiles(event.clipboardData.files);
+        return;
+      }
+
+      // 文字を選んだまま URL を貼ったらリンクにする。
+      var text = (event.clipboardData.getData('text/plain') || '').trim();
+
+      if (/^https?:\/\/\S+$/.test(text) && body.selectionStart !== body.selectionEnd) {
+        event.preventDefault();
+        insert('[' + body.value.slice(body.selectionStart, body.selectionEnd) + '](' + text + ')');
       }
     });
+
+    if (file) {
+      file.addEventListener('change', function () {
+        if (file.files.length > 0) {
+          uploadFiles(file.files);
+        }
+        // 同じ画像をもう一度選べるようにする（change が飛ばなくなるため）
+        file.value = '';
+      });
+    }
 
     if (toggle) {
       toggle.addEventListener('click', function () {
         setPreview(form.dataset.preview !== 'on');
       });
+    }
+
+    if (previewPane) {
+      bindSync(body, previewPane);
+      bindSync(previewPane, body);
     }
 
     var tools = form.querySelectorAll('[data-md]');
@@ -313,10 +730,13 @@
     form.addEventListener('input', markDirty);
     form.addEventListener('submit', function () {
       dirty = false;
+      window.clearTimeout(draftTimer);
+      clearDraft();
     });
 
     window.addEventListener('beforeunload', function (event) {
       if (dirty) {
+        writeDraft();
         event.preventDefault();
         event.returnValue = '';
       }
@@ -331,6 +751,7 @@
     });
 
     updateCount();
+    offerDraft();
 
     var stored = null;
     try {
