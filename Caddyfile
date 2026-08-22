@@ -6,7 +6,25 @@
 # 入れず、DB と同じ volume に置いてある。
 
 {
-	frankenphp
+	frankenphp {
+		# worker モード。public/index.php を 1 度だけ起動して常駐させ、
+		# リクエストごとに frankenphp_handle_request() のクロージャだけを
+		# 回す（autoload・.env・DI コンテナ・ルートマップの読み込みが
+		# 毎回走らなくなる）。index.php 側が FRANKENPHP_WORKER を見て
+		# ループに入るので、`php -S` での開発はこれまでどおり classic。
+		#
+		# Relayer は 304 短絡と PRG リダイレクトで exit を呼ぶ。exit は
+		# worker をクリーンに終了させ FrankenPHP が起動し直すので壊れは
+		# しないが、その応答だけは classic と同じコストになる。
+		worker {
+			file /app/public/index.php
+			name site
+		}
+		# 1 worker あたりこの回数さばいたら作り直す。Relayer が
+		# リクエストごとに register_shutdown_function() を積むなど、
+		# 長く生きるほど増えるものの上限をここで切る。
+		max_requests 500
+	}
 	order php_server before file_server
 	# fly.io の proxy が TLS を終端するので、コンテナ側は素の HTTP で待つ。
 	auto_https off

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "12a55569b0a50ccc6742ff73366383c7",
+    "content-hash": "009ace4b5b8fc12df94887e365c9aa9d",
     "packages": [
         {
             "name": "dflydev/dot-access-data",
@@ -656,16 +656,16 @@
         },
         {
             "name": "polidog/relayer",
-            "version": "v0.25.0",
+            "version": "v0.28.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/polidog/relayer.git",
-                "reference": "772e163f5cb90132c5c8d28b46fbf01906ce346a"
+                "reference": "859e311e368e00356a68427775ae12c856a27c81"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/polidog/relayer/zipball/772e163f5cb90132c5c8d28b46fbf01906ce346a",
-                "reference": "772e163f5cb90132c5c8d28b46fbf01906ce346a",
+                "url": "https://api.github.com/repos/polidog/relayer/zipball/859e311e368e00356a68427775ae12c856a27c81",
+                "reference": "859e311e368e00356a68427775ae12c856a27c81",
                 "shasum": ""
             },
             "require": {
@@ -674,7 +674,7 @@
                 "firebase/php-jwt": "^7.0",
                 "monolog/monolog": "^3.0",
                 "php": ">=8.5",
-                "polidog/use-php": "^0.7.1",
+                "polidog/use-php": "^0.8.0",
                 "psr/container": "^2.0",
                 "symfony/config": "^7.1",
                 "symfony/dependency-injection": "^7.1",
@@ -711,9 +711,9 @@
             "description": "Relayer — file-based router + Symfony DependencyInjection + dotenv on top of polidog/use-php.",
             "support": {
                 "issues": "https://github.com/polidog/relayer/issues",
-                "source": "https://github.com/polidog/relayer/tree/v0.25.0"
+                "source": "https://github.com/polidog/relayer/tree/v0.28.0"
             },
-            "time": "2026-05-24T00:31:12+00:00"
+            "time": "2026-08-22T14:32:15+00:00"
         },
         {
             "name": "polidog/tehilim",
@@ -767,16 +767,16 @@
         },
         {
             "name": "polidog/use-php",
-            "version": "v0.7.2",
+            "version": "v0.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/polidog/usePHP.git",
-                "reference": "1b23bb648faf875193d89d674d3eaf9319f1aab6"
+                "reference": "fa9206c930cb2b28af5894ba9309a5aa08ef38a5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/polidog/usePHP/zipball/1b23bb648faf875193d89d674d3eaf9319f1aab6",
-                "reference": "1b23bb648faf875193d89d674d3eaf9319f1aab6",
+                "url": "https://api.github.com/repos/polidog/usePHP/zipball/fa9206c930cb2b28af5894ba9309a5aa08ef38a5",
+                "reference": "fa9206c930cb2b28af5894ba9309a5aa08ef38a5",
                 "shasum": ""
             },
             "require": {
@@ -815,9 +815,9 @@
             "description": "React Hooks-like PHP components with server-side state management",
             "support": {
                 "issues": "https://github.com/polidog/usePHP/issues",
-                "source": "https://github.com/polidog/usePHP/tree/v0.7.2"
+                "source": "https://github.com/polidog/usePHP/tree/v0.8.0"
             },
-            "time": "2026-05-20T07:57:52+00:00"
+            "time": "2026-08-20T13:20:56+00:00"
         },
         {
             "name": "psr/container",
@@ -974,16 +974,16 @@
         },
         {
             "name": "symfony/config",
-            "version": "v7.4.16",
+            "version": "v7.4.17",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/config.git",
-                "reference": "e896f5e874e6983d0a098f554ca82a08a924c298"
+                "reference": "696e12da8eea497a1a3808d714b43ff67a7df43e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/config/zipball/e896f5e874e6983d0a098f554ca82a08a924c298",
-                "reference": "e896f5e874e6983d0a098f554ca82a08a924c298",
+                "url": "https://api.github.com/repos/symfony/config/zipball/696e12da8eea497a1a3808d714b43ff67a7df43e",
+                "reference": "696e12da8eea497a1a3808d714b43ff67a7df43e",
                 "shasum": ""
             },
             "require": {
@@ -1029,7 +1029,7 @@
             "description": "Helps you find, load, combine, autofill and validate configuration values of any kind",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/config/tree/v7.4.16"
+                "source": "https://github.com/symfony/config/tree/v7.4.17"
             },
             "funding": [
                 {
@@ -1049,20 +1049,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-30T15:04:16+00:00"
+            "time": "2026-08-20T09:55:18+00:00"
         },
         {
             "name": "symfony/dependency-injection",
-            "version": "v7.4.16",
+            "version": "v7.4.17",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/dependency-injection.git",
-                "reference": "7f59a843c1fbcceafecdf6863d3e38ea6ecd5061"
+                "reference": "f318ac9da5aba0be2cf43ecdd562c05a33bc11c0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/7f59a843c1fbcceafecdf6863d3e38ea6ecd5061",
-                "reference": "7f59a843c1fbcceafecdf6863d3e38ea6ecd5061",
+                "url": "https://api.github.com/repos/symfony/dependency-injection/zipball/f318ac9da5aba0be2cf43ecdd562c05a33bc11c0",
+                "reference": "f318ac9da5aba0be2cf43ecdd562c05a33bc11c0",
                 "shasum": ""
             },
             "require": {
@@ -1113,7 +1113,7 @@
             "description": "Allows you to standardize and centralize the way objects are constructed in your application",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/dependency-injection/tree/v7.4.16"
+                "source": "https://github.com/symfony/dependency-injection/tree/v7.4.17"
             },
             "funding": [
                 {
@@ -1133,7 +1133,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-08-06T09:45:22+00:00"
+            "time": "2026-08-21T17:40:08+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -1286,16 +1286,16 @@
         },
         {
             "name": "symfony/filesystem",
-            "version": "v8.1.2",
+            "version": "v8.1.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/filesystem.git",
-                "reference": "17856b7a222664a26a5ea1cb06ee0721c2438217"
+                "reference": "6b2f4a0eeb28b5d74f90862592923a654bc629b3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/filesystem/zipball/17856b7a222664a26a5ea1cb06ee0721c2438217",
-                "reference": "17856b7a222664a26a5ea1cb06ee0721c2438217",
+                "url": "https://api.github.com/repos/symfony/filesystem/zipball/6b2f4a0eeb28b5d74f90862592923a654bc629b3",
+                "reference": "6b2f4a0eeb28b5d74f90862592923a654bc629b3",
                 "shasum": ""
             },
             "require": {
@@ -1333,7 +1333,7 @@
             "description": "Provides basic utilities for the filesystem",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/filesystem/tree/v8.1.2"
+                "source": "https://github.com/symfony/filesystem/tree/v8.1.5"
             },
             "funding": [
                 {
@@ -1353,7 +1353,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-22T15:42:13+00:00"
+            "time": "2026-08-21T12:16:08+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -1783,16 +1783,16 @@
         },
         {
             "name": "symfony/var-exporter",
-            "version": "v8.1.4",
+            "version": "v8.1.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/var-exporter.git",
-                "reference": "6efa89335ab6d336643a807fcc89ae4f8a7a17e9"
+                "reference": "b8f7dd85493e8372c7c81a1547caaaf86b9c16d1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/var-exporter/zipball/6efa89335ab6d336643a807fcc89ae4f8a7a17e9",
-                "reference": "6efa89335ab6d336643a807fcc89ae4f8a7a17e9",
+                "url": "https://api.github.com/repos/symfony/var-exporter/zipball/b8f7dd85493e8372c7c81a1547caaaf86b9c16d1",
+                "reference": "b8f7dd85493e8372c7c81a1547caaaf86b9c16d1",
                 "shasum": ""
             },
             "require": {
@@ -1842,7 +1842,7 @@
                 "serialize"
             ],
             "support": {
-                "source": "https://github.com/symfony/var-exporter/tree/v8.1.4"
+                "source": "https://github.com/symfony/var-exporter/tree/v8.1.5"
             },
             "funding": [
                 {
@@ -1862,20 +1862,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-30T12:40:56+00:00"
+            "time": "2026-08-13T16:11:28+00:00"
         },
         {
             "name": "symfony/yaml",
-            "version": "v7.4.15",
+            "version": "v7.4.17",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/yaml.git",
-                "reference": "e101850ded5d2c0d44bf32abb8996404afec2dec"
+                "reference": "0b040d7b66ceb10b7bb24c8e6656257932693a12"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/yaml/zipball/e101850ded5d2c0d44bf32abb8996404afec2dec",
-                "reference": "e101850ded5d2c0d44bf32abb8996404afec2dec",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/0b040d7b66ceb10b7bb24c8e6656257932693a12",
+                "reference": "0b040d7b66ceb10b7bb24c8e6656257932693a12",
                 "shasum": ""
             },
             "require": {
@@ -1918,7 +1918,7 @@
             "description": "Loads and dumps YAML files",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/yaml/tree/v7.4.15"
+                "source": "https://github.com/symfony/yaml/tree/v7.4.17"
             },
             "funding": [
                 {
@@ -1938,7 +1938,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-21T15:13:06+00:00"
+            "time": "2026-08-21T12:09:28+00:00"
         }
     ],
     "packages-dev": [

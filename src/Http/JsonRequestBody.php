@@ -12,20 +12,18 @@ namespace App\Http;
  * superglobals も生ストリームも触らない」という規約は守りたいので、
  * `UploadedFiles` と同じく責務をこのサービスに閉じ込め、型で受け取る。
  *
- * 1 リクエスト内で複数回呼ばれても同じ内容を返せるよう、読んだ結果は持っておく。
+ * 読んだ結果をプロパティに持たないのは、このクラスが DI のシングルトンで、
+ * FrankenPHP の worker モードではリクエストをまたいで生き続けるため。
+ * 一度メモ化すると 2 リクエスト目以降がずっと最初の本文を読むことになる。
+ * `php://input` は PHP 5.6 以降なら何度でも読み直せるので、呼ぶたびに読む。
  */
 final class JsonRequestBody
 {
-    private ?string $raw = null;
-
     public function raw(): string
     {
-        if (null === $this->raw) {
-            $contents = \file_get_contents('php://input');
-            $this->raw = false === $contents ? '' : $contents;
-        }
+        $contents = \file_get_contents('php://input');
 
-        return $this->raw;
+        return false === $contents ? '' : $contents;
     }
 
     /**
