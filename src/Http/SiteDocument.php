@@ -85,6 +85,24 @@ final class SiteDocument implements DocumentInterface
         return $this;
     }
 
+    /**
+     * リクエストの入口で呼ぶ。このクラスは DI のシングルトンで、FrankenPHP の
+     * worker モードではプロセスがリクエストをまたいで生きるため、前のページが
+     * 設定した title / og:image や addHeadHtml() の蓄積がそのまま次のページに
+     * 出てしまう（2 ページ目の noindex がトップに付く、など）。
+     */
+    public function reset(): void
+    {
+        $this->title = '';
+        $this->description = '';
+        $this->canonical = '';
+        $this->ogType = 'website';
+        $this->ogImage = '';
+        $this->ogImageWidth = null;
+        $this->ogImageHeight = null;
+        $this->extraHead = [];
+    }
+
     public function render(string $content): string
     {
         return $this->document($content);

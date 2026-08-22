@@ -145,6 +145,39 @@ Cloudflare の purge。どれか 1 つ欠けるとキャッシュが古いまま
   **重い処理は必ず内側の render closure に置く**。外側の factory は
   キャッシュ宣言とパラメータ参照だけ。
 
+### FrankenPHP は worker モードで動く
+
+`Caddyfile` の `worker { file /app/public/index.php }` により、本番では
+`public/index.php` が **1 度だけ boot してプロセスに常駐**し、リクエストごとに
+`frankenphp_handle_request()` のクロージャだけが回る（autoload・`.env`・
+DI コンテナ・ルートマップの読み込みが毎回走らない。応答は classic の
+約 20ms → 約 1.5ms）。`php -S`（`composer serve`）は `FRANKENPHP_WORKER` が
+立たないので従来どおり 1 リクエスト 1 プロセス。
+
+つまり **DI のシングルトンはリクエストをまたいで生きる**。守ること:
+
+- **サービスにリクエスト由来の状態を持たせない。** 持つなら
+  `public/index.php` の `$handle` の先頭で消す。いま消しているのは
+  `SiteDocument::reset()`（title / og:image / `addHeadHtml()` の蓄積）と
+  usePHP の `ComponentState` / `StorageFactory`。`JsonRequestBody` が
+  本文をメモ化しないのも同じ理由（メモ化すると 2 リクエスト目以降が
+  ずっと最初の本文を読む）。
+- **`frankenphp_handle_request()` を `function_exists` で分岐しない。**
+  FrankenPHP なら classic モードでも関数は存在し、呼ぶと例外になる。
+  判定は `$_SERVER['FRANKENPHP_WORKER']`。
+- **Relayer の `exit`（304 短絡・認可リダイレクト・PRG）は worker を
+  終了させる。** exit status 0 なので FrankenPHP が即座に起動し直し、
+  応答も正しく返る（壊れない）が、その直後の 1 リクエストだけ boot が
+  乗る。事前コンパイル済みなので実測 2ms 程度。
+- **`max_requests 500`** で worker を定期的に作り直している。Relayer が
+  リクエストごとに `register_shutdown_function()` を積むなど、長く生きる
+  ほど増えるものの上限。
+- **function 型ページ（`return function (PageContext $ctx) …` の `.psx`）が
+  2 リクエスト目から 404 になったら Relayer の `loadPageInternal()` を疑う。**
+  `require_once` は 2 回目以降 `true` を返すので、factory Closure を
+  パスごとに保持していないと class 型の探索に落ちて 404 になる
+  （Relayer 0.25.0 がこれで、`pageFactories` のキャッシュで直している）。
+
 ### URL は 1 本も変えない
 
 Hugo 時代の URL がそのまま生きている。特に効いてくる事実:

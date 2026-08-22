@@ -8,7 +8,7 @@ Cloudflare のエッジでヒットしているあいだオリジンには 1 リ
 静的サイトに近いランニングコストのまま、ブラウザから記事を書けるようになる。
 
 ```
-[Browser] → [Cloudflare]  → [fly.io: FrankenPHP 1 台]
+[Browser] → [Cloudflare]  → [fly.io: FrankenPHP 1 台（worker モード）]
                 ↑ HIT         ├ SQLite  /data/cms.db
                               └ 画像    /data/uploads
 記事を保存 → ETag を更新 → 記事 URL・トップ・RSS を purge
