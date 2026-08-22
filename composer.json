@@ -1,6 +1,6 @@
 {
     "require": {
-        "polidog/relayer": "^0.25.0",
+        "polidog/relayer": "^0.28.0",
         "polidog/tehilim": "^0.1.0",
         "league/commonmark": "^2.10"
     },
@@ -28,7 +28,7 @@
     },
     "extra": {
         "relayer": {
-            "structure_version": 5
+            "structure_version": 8
         }
     },
     "require-dev": {

@@ -6,8 +6,6 @@ use App\AppConfigurator;
 use App\Http\SiteDocument;
 use App\Support\SiteConfig;
 use Polidog\Relayer\Relayer;
-use Polidog\UsePhp\Runtime\ComponentState;
-use Polidog\UsePhp\Storage\StorageFactory;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -38,12 +36,6 @@ $handle = static function () use ($router, $document): void {
     // ページが毎回 PageMeta を通す保証は無いので、入口で白紙に戻す。
     $document->reset();
 
-    // usePHP のコンポーネント状態（useState の置き場）とストレージの
-    // キャッシュも static。このサイトは useState を使っていないが、
-    // 使い始めたときにリクエストをまたいで状態が見えないよう先に消す。
-    ComponentState::clearInstances();
-    StorageFactory::reset();
-
     try {
         $router->run();
     } catch (\Throwable $e) {
@@ -57,6 +49,12 @@ $handle = static function () use ($router, $document): void {
             \header('Content-Type: text/plain; charset=UTF-8');
         }
         echo "500 Internal Server Error\n";
+    } finally {
+        // フレームワークと usePHP が static に持つリクエスト由来の状態
+        // （コンポーネント状態・ストレージ・RenderContext・翻訳）を捨てる。
+        // run() の finally でも大半は消えるが、exit 経路では finally が
+        // 走らないので、ここでもう一度呼ぶ（冪等）。
+        Relayer::endRequest();
     }
 };
 

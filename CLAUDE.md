@@ -176,7 +176,14 @@ DI コンテナ・ルートマップの読み込みが毎回走らない。応�
   2 リクエスト目から 404 になったら Relayer の `loadPageInternal()` を疑う。**
   `require_once` は 2 回目以降 `true` を返すので、factory Closure を
   パスごとに保持していないと class 型の探索に落ちて 404 になる
-  （Relayer 0.25.0 がこれで、`pageFactories` のキャッシュで直している）。
+  （Relayer 0.25.0 〜 0.27.0 がこれで、0.28.0 の `pageFactories` で直った。
+  だから **Relayer を 0.28.0 未満に戻してはいけない**）。
+- **Relayer の雛形 `public/worker.php` と `static-build.Dockerfile` は
+  使わない**（`relayer upgrade` の構造バージョン 6 が生成するが、この
+  リポジトリでは削除してある）。雛形の `worker.php` は `SiteDocument` の
+  差し替えをしないので canonical が消えるし、本番は fly の `Dockerfile`
+  で動く。worker の入口は `public/index.php` 1 本に寄せ、フレームワーク側の
+  リクエスト後始末は `Relayer::endRequest()` で受けている。
 
 ### URL は 1 本も変えない
 
