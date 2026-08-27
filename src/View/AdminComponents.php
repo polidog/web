@@ -230,9 +230,14 @@ final class AdminComponents
      * 揃えつつ、管理に要る 2 つ —— パスと公開状態 —— を右に足してある。
      * 年が飛ぶので日付は年から出す（公開側の年号マーカーは使わない）。
      *
+     * `$selectName` を渡すと各行の頭にチェックボックスが付く（一括操作
+     * 用）。そのときは行を `<a>` ではなく `<div>` で囲む —— チェック
+     * ボックスをリンクの中に置くと、押すたびに編集画面へ飛んでしまう。
+     *
      * @param Paginated<PostAdminRow> $list
+     * @param ?string                 $selectName 選択欄の name（例 `ids[]`）
      */
-    public static function postTable(Paginated $list, string $editBase): Element
+    public static function postTable(Paginated $list, string $editBase, ?string $selectName = null): Element
     {
         if ([] === $list->items) {
             return self::emptyState('該当する記事がありません。');
@@ -241,35 +246,97 @@ final class AdminComponents
         return H::div(
             className: 'flex flex-col',
             children: \array_map(
-                static function (array $post) use ($editBase): Element {
+                static function (array $post) use ($editBase, $selectName): Element {
                     $stamp = $post['publishedAt'] ?? $post['updatedAt'];
+                    $row = 'group -mx-3 flex items-baseline gap-4 rounded-md px-3 py-2.5 '
+                        . 'transition-colors hover:bg-raised';
 
-                    return H::a(
-                        href: \sprintf('%s/%d', $editBase, $post['id']),
-                        className: 'group -mx-3 flex items-baseline gap-4 rounded-md px-3 py-2.5 '
-                            . 'transition-colors hover:bg-raised',
+                    $cells = [
+                        H::time(
+                            datetime: \str_replace(' ', 'T', $stamp),
+                            className: 'shrink-0 font-mono text-xs text-muted',
+                            children: \str_replace('-', '.', \substr($stamp, 0, 10)),
+                        ),
+                        H::span(
+                            className: 'min-w-0 flex-1 truncate text-[0.9375rem] text-ink '
+                                . 'transition-colors group-hover:text-accent',
+                            children: $post['title'],
+                        ),
+                        H::span(
+                            className: 'hidden max-w-[18rem] shrink-0 truncate font-mono text-xs '
+                                . 'text-faint md:block',
+                            children: $post['path'],
+                        ),
+                        self::statusBadge($post['status']),
+                    ];
+
+                    $href = \sprintf('%s/%d', $editBase, $post['id']);
+
+                    if (null === $selectName) {
+                        return H::a(href: $href, className: $row, children: $cells);
+                    }
+
+                    return H::div(
+                        className: $row,
                         children: [
-                            H::time(
-                                datetime: \str_replace(' ', 'T', $stamp),
-                                className: 'shrink-0 font-mono text-xs text-muted',
-                                children: \str_replace('-', '.', \substr($stamp, 0, 10)),
+                            new Element('input', [
+                                'type' => 'checkbox',
+                                'name' => $selectName,
+                                'value' => (string) $post['id'],
+                                'aria-label' => \sprintf('「%s」を選択', $post['title']),
+                                'data-bulk-item' => $post['status'],
+                                'className' => 'size-4 shrink-0 accent-accent',
+                            ]),
+                            H::a(
+                                href: $href,
+                                className: 'flex min-w-0 flex-1 items-baseline gap-4',
+                                children: $cells,
                             ),
-                            H::span(
-                                className: 'min-w-0 flex-1 truncate text-[0.9375rem] text-ink '
-                                    . 'transition-colors group-hover:text-accent',
-                                children: $post['title'],
-                            ),
-                            H::span(
-                                className: 'hidden max-w-[18rem] shrink-0 truncate font-mono text-xs '
-                                    . 'text-faint md:block',
-                                children: $post['path'],
-                            ),
-                            self::statusBadge($post['status']),
                         ],
                     );
                 },
                 $list->items,
             ),
+        );
+    }
+
+    /**
+     * 一括操作のバー。`postTable()` に `$selectName` を渡したときだけ
+     * 意味を持つ。挙動は admin.js（`data-bulk` 一式）。
+     *
+     * ボタンは選択が 0 件のあいだ `disabled` にする。押せないことを
+     * クラスの付け外しではなく `disabled` 属性で表すのは、Tailwind が
+     * `src/**` しかスキャンせず、JS の中にだけ現れるクラスは CSS に
+     * 出力されないため（`disabled:` バリアントはここに書いてあるので出る）。
+     */
+    public static function bulkBar(string $submitLabel): Element
+    {
+        return H::div(
+            className: 'mt-8 flex flex-wrap items-center gap-4',
+            children: [
+                H::label(
+                    className: 'flex items-center gap-2 text-[0.8125rem] text-muted',
+                    children: [
+                        new Element('input', [
+                            'type' => 'checkbox',
+                            'data-bulk-all' => 'true',
+                            'className' => 'size-4 accent-accent',
+                        ]),
+                        H::span(children: 'このページの下書きをすべて選択'),
+                    ],
+                ),
+                new Element('span', [
+                    'data-bulk-count' => 'true',
+                    'className' => 'font-mono text-xs tracking-wide text-muted',
+                    // 初期値。以降は選択が変わるたび admin.js が書き換える。
+                ], ['0 件を選択中']),
+                new Element('button', [
+                    'type' => 'submit',
+                    'data-bulk-submit' => 'true',
+                    'disabled' => true,
+                    'className' => self::BUTTON . ' disabled:cursor-not-allowed disabled:opacity-40',
+                ], [$submitLabel]),
+            ],
         );
     }
 

@@ -24,6 +24,14 @@
  *   [data-md]                    Markdown の記法ボタン
  *   [data-copy]                  クリップボードにコピー（画像一覧）
  *   [data-confirm]               押す前に確認する（削除）
+ *
+ * 記事一覧の一括操作（AdminComponents::postTable + bulkBar）はこの契約:
+ *
+ *   [data-bulk]                  一括操作のフォーム
+ *   [data-bulk-item]             行のチェックボックス。値はその記事の状態
+ *   [data-bulk-all]              このページの下書きを全選択
+ *   [data-bulk-count]            選択件数の差し込み先
+ *   [data-bulk-submit]           実行ボタン。0 件のあいだ disabled
  */
 (function () {
   'use strict';
@@ -764,7 +772,76 @@
     }
   }
 
+  /*
+   * 記事一覧の一括公開。選択が 0 件のあいだボタンを disabled にするのは
+   * クラスの付け外しを避けるため —— Tailwind は src/** しかスキャンせず、
+   * ここにだけ現れるクラスは CSS に出力されない。
+   */
+  function initBulk() {
+    var form = document.querySelector('[data-bulk]');
+    if (!form) {
+      return;
+    }
+
+    var items = form.querySelectorAll('[data-bulk-item]');
+    var all = form.querySelector('[data-bulk-all]');
+    var count = form.querySelector('[data-bulk-count]');
+    var submit = form.querySelector('[data-bulk-submit]');
+
+    function selected() {
+      var n = 0;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].checked) {
+          n++;
+        }
+      }
+      return n;
+    }
+
+    function sync() {
+      var n = selected();
+      if (count) {
+        count.textContent = n + ' 件を選択中';
+      }
+      if (submit) {
+        submit.disabled = n === 0;
+      }
+    }
+
+    for (var i = 0; i < items.length; i++) {
+      items[i].addEventListener('change', sync);
+    }
+
+    if (all) {
+      all.addEventListener('change', function (event) {
+        var on = event.currentTarget.checked;
+        for (var n = 0; n < items.length; n++) {
+          // 公開済みの行まで巻き込まない。全選択が欲しくなるのは
+          // 「下書きをまとめて出す」ときだけなので、対象もそれに合わせる。
+          if (items[n].dataset.bulkItem === 'draft') {
+            items[n].checked = on;
+          }
+        }
+        sync();
+      });
+    }
+
+    form.addEventListener('submit', function (event) {
+      var n = selected();
+      if (n === 0) {
+        event.preventDefault();
+        return;
+      }
+      if (!window.confirm(n + ' 件を公開します。よろしいですか？')) {
+        event.preventDefault();
+      }
+    });
+
+    sync();
+  }
+
   initConfirm();
   initCopy();
   initEditor();
+  initBulk();
 })();

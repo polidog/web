@@ -142,9 +142,54 @@ final class PostWriter
             return;
         }
 
-        $now = new DateTimeImmutable();
-        $publishedAt = $post['publishedAt'] ?? null;
+        $this->applyStatus($id, $post['publishedAt'], $status, new DateTimeImmutable());
+        $this->invalidate((string) $post['path'], null);
+    }
 
+    /**
+     * 一覧で選んだ複数記事の公開状態をまとめて切り替える。
+     *
+     * setStatus() を回すのではなく専用に書いてあるのは無効化のため ——
+     * 1 件ごとに contentVersion() を数え直して purge を投げると、25 件
+     * 選んだだけで Cloudflare の API を 25 往復する。ここでは版を 1 度
+     * 数え、URL をまとめて 1 回で捨てる。
+     *
+     * @param list<int> $ids
+     *
+     * @return int 実際に変わった件数。存在しない id と、すでにその状態
+     *             だったものは数えない
+     */
+    public function setStatusMany(array $ids, string $status): int
+    {
+        $now = new DateTimeImmutable();
+        $changed = [];
+
+        foreach (\array_unique($ids) as $id) {
+            $post = $this->posts->findById($id);
+            if (null === $post || $status === $post['status']) {
+                continue;
+            }
+
+            $this->applyStatus($id, $post['publishedAt'], $status, $now);
+            $changed[] = (string) $post['path'];
+        }
+
+        if ([] !== $changed) {
+            $this->invalidatePaths($changed, []);
+        }
+
+        return \count($changed);
+    }
+
+    /**
+     * 状態だけを書き換える。本文には触らない。
+     *
+     * 公開に切り替えるときだけ publishedAt を今にするが、すでに日付が
+     * あるものは触らない（下書きに戻して公開し直しても、元の公開日が
+     * 残る —— 日付が URL を決めるので、変わると記事の住所が変わる）。
+     */
+    private function applyStatus(int $id, ?string $publishedAt, string $status, DateTimeImmutable $now): void
+    {
         $this->db->post->update([
             'where' => ['id' => $id],
             'data' => [
@@ -152,11 +197,9 @@ final class PostWriter
                 'updatedAt' => $now,
                 'publishedAt' => 'published' === $status && null === $publishedAt
                     ? $now
-                    : (null !== $publishedAt ? new DateTimeImmutable((string) $publishedAt) : null),
+                    : (null !== $publishedAt ? new DateTimeImmutable($publishedAt) : null),
             ],
         ]);
-
-        $this->invalidate((string) $post['path'], null);
     }
 
     /**
@@ -180,6 +223,20 @@ final class PostWriter
      */
     private function invalidate(?string $path, ?string $previousPath): void
     {
+        $this->invalidatePaths(
+            null !== $path ? [$path] : [],
+            // URL を変えた（またはページごと消した）なら、旧 URL の
+            // キャッシュを残すと 404 になるべきページが生き続ける。
+            null !== $previousPath && $previousPath !== $path ? [$previousPath] : [],
+        );
+    }
+
+    /**
+     * @param list<string> $changed 中身が変わった URL
+     * @param list<string> $removed 無くなった URL
+     */
+    private function invalidatePaths(array $changed, array $removed): void
+    {
         if ($this->deferInvalidation) {
             return;
         }
@@ -189,19 +246,17 @@ final class PostWriter
 
         $paths = ['/', '/index.xml'];
 
-        if (null !== $path) {
+        foreach ($changed as $path) {
             $this->etags->set(PageCache::etagKey($path), $this->stamp($path, $version));
             $paths[] = $path;
         }
 
-        if (null !== $previousPath && $previousPath !== $path) {
-            // URL を変えた（またはページごと消した）なら、旧 URL の
-            // キャッシュを残すと 404 になるべきページが生き続ける。
-            $this->etags->forget(PageCache::etagKey($previousPath));
-            $paths[] = $previousPath;
+        foreach ($removed as $path) {
+            $this->etags->forget(PageCache::etagKey($path));
+            $paths[] = $path;
         }
 
-        $this->purger->purge($paths);
+        $this->purger->purge(\array_values(\array_unique($paths)));
     }
 
     private function stamp(string $path, string $version): string

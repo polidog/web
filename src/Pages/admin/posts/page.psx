@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Service\PageMeta;
 use App\Service\PostRepository;
+use App\Service\PostWriter;
 use App\Support\PageCache;
 use App\View\AdminComponents;
 use Polidog\Relayer\Http\Request;
@@ -14,8 +15,18 @@ use Polidog\UsePhp\Runtime\Element;
 /**
  * 記事の一覧。下書きも含め、状態と語句で絞り込める。
  * 1301 件あるので検索が無いと使い物にならない。
+ *
+ * 行のチェックボックスで選んだぶんをまとめて公開できる。対象は「選んだ
+ * 記事」だけで、絞り込みに一致する全件ではない —— 条件を 1 つ間違えた
+ * だけで数百件が公開されるのは、取り返しがつかないわりに得が少ない。
  */
-return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Request $request): Closure {
+return function (
+    PageContext $ctx,
+    PostRepository $posts,
+    PostWriter $writer,
+    PageMeta $meta,
+    Request $request,
+): Closure {
     $ctx->requireAuth(['admin'], '/admin/login');
     $ctx->cache(PageCache::admin());
     $meta->apply('/admin/posts', '記事');
@@ -24,7 +35,29 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Reques
     $status = $request->query('status') ?? '';
     $query = $request->query('q') ?? '';
 
-    return function () use ($posts, $page, $status, $query): Element {
+    // 一括公開は POST で来る。form action はページのパスだけでクエリを
+    // 保持しないので、絞り込みは hidden で持ち回って戻り先を組み直す。
+    $publish = $ctx->action('publish', function (array $form) use ($writer, $ctx): void {
+        $ids = \array_values(\array_filter(\array_map(
+            static fn (mixed $id): int => (int) (\is_scalar($id) ? $id : 0),
+            \is_array($form['ids'] ?? null) ? $form['ids'] : [],
+        )));
+
+        $count = [] !== $ids ? $writer->setStatusMany($ids, 'published') : 0;
+
+        $back = \array_filter([
+            'page' => (string) ($form['page'] ?? ''),
+            'status' => (string) ($form['status'] ?? ''),
+            'q' => (string) ($form['q'] ?? ''),
+            'published' => (string) $count,
+        ]);
+
+        $ctx->redirect('/admin/posts?' . \http_build_query($back));
+    });
+
+    $published = (int) ($request->query('published') ?? '0');
+
+    return function () use ($posts, $page, $status, $query, $publish, $published): Element {
         $list = $posts->listForAdmin('post', $page, '' !== $status ? $status : null, $query);
 
         return (
@@ -34,6 +67,10 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Reques
                     \sprintf('全 %d 件', $list->total),
                     [H::a(href: '/admin/posts/new', className: AdminComponents::BUTTON, children: '新しい記事')],
                 )}
+
+                {$published > 0
+                    ? AdminComponents::notice('ok', \sprintf('%d 件を公開しました。キャッシュも更新済みです。', $published))
+                    : H::div()}
 
                 <form method="get" action="/admin/posts" className="mb-8 flex flex-wrap items-center gap-3">
                     <input
@@ -56,7 +93,14 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta, Reques
                     <button type="submit" className={AdminComponents::BUTTON_QUIET}>絞り込む</button>
                 </form>
 
-                {AdminComponents::postTable($list, '/admin/posts')}
+                <form action={$publish} method="post" data-bulk="true">
+                    <input type="hidden" name="page" value={(string) $page} />
+                    <input type="hidden" name="status" value={$status} />
+                    <input type="hidden" name="q" value={$query} />
+                    {AdminComponents::postTable($list, '/admin/posts', 'ids[]')}
+                    {[] !== $list->items ? AdminComponents::bulkBar('選択した記事を公開') : H::div()}
+                </form>
+
                 {AdminComponents::adminPagination(
                     $list,
                     '/admin/posts',
