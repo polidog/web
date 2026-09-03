@@ -145,6 +145,32 @@ Cloudflare の purge。どれか 1 つ欠けるとキャッシュが古いまま
   **重い処理は必ず内側の render closure に置く**。外側の factory は
   キャッシュ宣言とパラメータ参照だけ。
 
+### JSON は同じ URL・別の表現（`Accept` で出し分ける）
+
+`Accept: application/json` で来た GET だけ `App\Service\JsonApi` が JSON を
+返す（索引 `/archives/`、記事詳細 `/YYYY/MM/DD/slug/`）。入口は
+`src/Pages/middleware.php` —— ページと `route.php` は同じディレクトリに
+置けないので、同一 URL で出し分けられる場所がここしかない。middleware は
+リクエストごとに require され直して宣言を置けないうえ、引数が
+`Request` と `$next` に固定でオートワイヤも効かないので、判断も組み立ても
+サービス側に寄せ、`Relayer::container()` で引いている。
+
+- **JSON は共有キャッシュに載せない**（`Cache-Control: no-store`）。
+  Cloudflare は `Accept` をキャッシュキーに入れず、`Vary: Accept` も見ない
+  （効くのは `Accept-Encoding` と Enterprise の Custom Cache Key だけ）。
+  エッジに載せた瞬間、次にその URL を開いた読者に JSON が降る。
+- **HTML 側に `Vary` を足さない。** Cloudflare は `Accept-Encoding` 以外の
+  `Vary` が付いたレスポンスをキャッシュしないことがある。記事詳細の
+  `s-maxage` 1 週間はこのサイトのコスト構造そのものなので、そこは触らない。
+- **逆流（エッジの HTML が JSON 要求に HIT する）はアプリでは防げない。**
+  オリジンにリクエストが届かないため。Cloudflare の Cache Rules に
+  「`Accept` が `application/json` を含むなら Bypass cache」を、
+  「Eligible for cache」より**上**に 1 本置くこと（README のデプロイ節）。
+- **`text/html` が混ざる `Accept` は HTML を優先する。** 判断に迷う相手には
+  人間向けの表現を返す。
+- 日時は SQLite の TEXT をそのまま出さず ISO 8601（`+09:00` 付き）にする。
+  保存値にタイムゾーンが無く、読み手が UTC と解釈しうるため。
+
 ### FrankenPHP は worker モードで動く
 
 `Caddyfile` の `worker { file /app/public/index.php }` により、本番では

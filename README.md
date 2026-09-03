@@ -74,6 +74,39 @@ OAuth の入力欄は空のままでよい（クライアント登録は自動�
 （`/.well-known/*`・`/oauth/*`）。アクセストークンは 1 時間、リフレッシュは
 使うたびに入れ替わる。設計の詳細は [CLAUDE.md](./CLAUDE.md) を参照。
 
+## JSON で読む
+
+記事は HTML と**同じ URL** で JSON でも取れる。`Accept: application/json` を
+付けたときだけ JSON になり、付けなければ従来どおり HTML が返る。
+
+```bash
+curl -H 'Accept: application/json' https://polidog.jp/archives/            # 全記事の索引
+curl -H 'Accept: application/json' https://polidog.jp/2026/09/01/git-dmb/  # 記事 1 本
+```
+
+索引（`/archives/`）は path・title・公開日・更新日・タグを新しい順に全件返す。
+本文は入らない —— 1,300 件ぶんの Markdown を毎回渡すと数 MB になるので、
+`updatedAt` を版として見て、変わった記事だけ詳細で取り直す。`version` は
+公開済みコンテンツ全体の版で、前回と同じなら 1 件も取り直さなくてよい。
+
+記事詳細は `markdown`（書いたまま）と `html`（保存時に変換済み）の両方を持つ。
+`/archives/page/2/` のようなページングや一覧・タグには JSON 表現が無く、
+`Accept` を付けても HTML が返る。
+
+`Accept` に `text/html` が混ざっているときは HTML を優先する。ブラウザの
+`Accept` に `application/json` は入らないので普通は当たらないが、両方を
+並べてくる相手は人間向けの表現を望んでいるとみなす。
+
+**JSON は共有キャッシュに 1 バイトも載せない**（`Cache-Control: no-store`）。
+Cloudflare は `Accept` をキャッシュキーに入れず `Vary: Accept` も見ないので、
+エッジに載せると次にその URL を開いた読者に JSON が降ってしまう。同じ理由で
+**Cloudflare 側に bypass ルールが 1 本要る**（「Cloudflare 側の設定」の 4）。
+無いと、既にエッジにある HTML が JSON 要求にも HIT する —— そちらは
+オリジンにリクエストが届かないので、アプリ側では防げない。
+
+下書きも読みたいときは JSON ではなく MCP（`/mcp`）を使う。こちらは公開済み
+だけを返す代わりに、認証が要らない。
+
 ## 移行
 
 ```bash
@@ -149,6 +182,15 @@ fly ssh console -C "php /app/bin/refresh-caches.php"
 2. `/admin/*` には別ルールで *Bypass cache* を設定
 3. purge 用の API トークンを発行し（Zone → Cache Purge の権限）、
    `CLOUDFLARE_ZONE_ID` と `CLOUDFLARE_API_TOKEN` を fly secrets に入れる
+4. **`Accept: application/json` は Bypass cache**（「JSON で読む」の口を使うなら必須）
+   - 対象: `(http.request.headers["accept"][0] contains "application/json")`
+   - Cache eligibility: *Bypass cache*
+   - **1 のルールより上に置く**。Cache Rules は上から評価され、先に一致した
+     ものが勝つ。下に置くと HTML と同じ扱いのままになり、意味が無い。
+
+   これが無いと、既にキャッシュされている HTML が JSON 要求にも HIT する
+   （オリジンに届かないのでアプリ側では防げない）。Custom Cache Key と違って
+   bypass は無料プランでも作れる。
 
 トークンを設定しないあいだ purge は no-op になる（`s-maxage` が切れるまで
 古い内容が残るだけで、壊れはしない）。

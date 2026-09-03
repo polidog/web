@@ -45,6 +45,7 @@ use RuntimeException;
  * @phpstan-type ArchiveRow array{id: int, path: string, title: string, publishedAt: string}
  * @phpstan-type NeighbourRow array{id: int, path: string, title: string}
  * @phpstan-type FeedRow array{id: int, path: string, title: string, excerpt: string|null, html: string, publishedAt: string|null}
+ * @phpstan-type IndexRow array{id: int, path: string, title: string, publishedAt: string|null, updatedAt: string}
  * @phpstan-type TermRow array{id: int, name: string, slug: string}
  * @phpstan-type TermCountRow array{id: int, name: string, slug: string, count: int}
  */
@@ -370,6 +371,59 @@ final class PostRepository
     }
 
     /**
+     * JSON API の索引。公開済みの記事を新しい順に全件返す。
+     *
+     * 本文を持たせないのは、1,300 件ぶんの Markdown を 1 レスポンスに
+     * 詰めると数 MB になるため。読み手は `updatedAt` を版として見て、
+     * 変わった記事だけを詳細（`Accept: application/json` の記事 URL）で
+     * 取り直す。全文が欲しいだけなら RSS（/index.xml）が最新 20 件を返す。
+     *
+     * @return list<IndexRow>
+     */
+    public function indexAll(): array
+    {
+        return $this->fetchAll(
+            $this->run(
+                'SELECT id, path, title, publishedAt, updatedAt FROM "Post"
+                 WHERE kind = \'post\' AND status = \'published\'
+                 ORDER BY publishedAt DESC, id DESC',
+            ),
+            self::indexRow(...),
+        );
+    }
+
+    /**
+     * 全記事ぶんのタグ slug を、記事 id をキーにまとめたもの。
+     *
+     * 索引で 1 件ずつ `tagsOf()` を呼ぶと 1,300 回クエリが飛ぶ。ここだけは
+     * 1 回引いて PHP 側で束ねる。並びは `tagsOf()` と同じく名前順。
+     *
+     * @return array<int, list<string>>
+     */
+    public function tagSlugsByPost(): array
+    {
+        $map = [];
+
+        foreach (
+            $this->run(
+                'SELECT pt."A" AS postId, t.slug FROM "Tag" t
+                 JOIN "_PostToTag" pt ON pt."B" = t.id
+                 JOIN "Post" p ON p.id = pt."A"
+                 WHERE p.kind = \'post\' AND p.status = \'published\'
+                 ORDER BY pt."A", t.name',
+            )->fetchAll(PDO::FETCH_ASSOC) as $row
+        ) {
+            if (!\is_array($row)) {
+                continue;
+            }
+
+            $map[(int) $row['postId']][] = (string) $row['slug'];
+        }
+
+        return $map;
+    }
+
+    /**
      * ETag のフォールバック値。EtagStore に値が無い（デプロイ直後・
      * キャッシュ破棄後）ときに、コンテンツ全体の版を表す種として使う。
      */
@@ -619,6 +673,22 @@ final class PostRepository
             'excerpt' => self::nullableString($row['excerpt'] ?? null),
             'html' => (string) $row['html'],
             'publishedAt' => self::nullableString($row['publishedAt'] ?? null),
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $row
+     *
+     * @return IndexRow
+     */
+    private static function indexRow(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'path' => (string) $row['path'],
+            'title' => (string) $row['title'],
+            'publishedAt' => self::nullableString($row['publishedAt'] ?? null),
+            'updatedAt' => (string) $row['updatedAt'],
         ];
     }
 
