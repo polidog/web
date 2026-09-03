@@ -165,7 +165,16 @@ Cloudflare の purge。どれか 1 つ欠けるとキャッシュが古いまま
 - **逆流（エッジの HTML が JSON 要求に HIT する）はアプリでは防げない。**
   オリジンにリクエストが届かないため。Cloudflare の Cache Rules に
   「`Accept` が `application/json` を含むなら Bypass cache」を、
-  「Eligible for cache」より**上**に 1 本置くこと（README のデプロイ節）。
+  「Eligible for cache」より**下**に 1 本置くこと（README のデプロイ節）。
+  Cache Rules は最初の一致で止まらず、**最後に一致したルールが勝つ**ので、
+  上に置くと下の「Eligible for cache」に上書きされて無効になる。
+- **`cf-cache-status: BYPASS` はルールが効いている証拠にならない。**
+  アプリが `no-store` を返しただけでも `BYPASS` と表示される。確かめるには、
+  記事 URL を HTML で 2 回叩いて `HIT` にしてから、同じ URL に
+  `Accept: application/json` を送る（`HIT` + HTML ならルールが効いていない）。
+- **記事 URL の形で JSON の対象を決めない。** `/YYYY/MM/DD/slug/`（Hugo 時代・
+  1,294本）と `/blog/YYYY/MM/slug/`（12本）が同居していて、`/2006/10/16` の
+  ようなものまである。索引と同じ条件で引けるかどうかだけを見る。
 - **`text/html` が混ざる `Accept` は HTML を優先する。** 判断に迷う相手には
   人間向けの表現を返す。
 - 日時は SQLite の TEXT をそのまま出さず ISO 8601（`+09:00` 付き）にする。

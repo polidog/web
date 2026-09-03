@@ -19,8 +19,8 @@ use Polidog\Relayer\Http\Response;
  * ときだけこちらが応える。入口は `src/Pages/middleware.php`。
  *
  * ```
- * GET /archives/            Accept: application/json  → 全記事の索引
- * GET /2026/09/01/git-dmb/  Accept: application/json  → その記事 1 本
+ * GET /archives/             Accept: application/json  → 全記事の索引
+ * GET /blog/2026/09/git-dmb/ Accept: application/json  → その記事 1 本
  * ```
  *
  * ## なぜ URL を増やさないのか
@@ -51,12 +51,6 @@ use Polidog\Relayer\Http\Response;
 final readonly class JsonApi
 {
     /**
-     * 記事 URL の形。Hugo の permalinks
-     * （`blog = "/:year/:month/:day/:filename/"`）がそのまま生きている。
-     */
-    private const string POST_PATH = '#^/(\d{4})/(\d{2})/(\d{2})/([^/]+)$#';
-
-    /**
      * 索引を出す URL。月別アーカイブ（全記事を新しい順に並べたページ）の
      * JSON 表現、という位置づけ。`/archives/page/2/` には付けない——
      * JSON は全件を 1 度に返すので、ページングに対応する表現が無い。
@@ -84,12 +78,8 @@ final readonly class JsonApi
             return $this->index();
         }
 
-        if (1 === \preg_match(self::POST_PATH, $path)) {
-            return $this->post($path);
-        }
-
-        // 一覧・タグ・管理画面など、JSON 表現を持たない URL。HTML を返す。
-        return null;
+        // 記事として引けたら JSON、引けなければ HTML（一覧・タグ・自由ページ）。
+        return $this->post($path);
     }
 
     /**
@@ -160,12 +150,26 @@ final readonly class JsonApi
         ]);
     }
 
-    private function post(string $path): Response
+    /**
+     * 記事 1 本。記事でない URL なら null（＝ HTML へ進ませる）。
+     *
+     * **URL の形では判定しない。** このサイトには 2 通りの記事 URL が同居して
+     * いる —— Hugo 時代の `/YYYY/MM/DD/slug/` が 1,294 本、新しく書いたものは
+     * `/blog/YYYY/MM/slug/` が 12 本。さらに `/2006/10/16`（スラッグの無い
+     * 3 セグメント）のようなものまである。形で絞ると必ず取りこぼすので、
+     * **索引と同じ条件（`kind = post` かつ公開済み）で引けるか**だけを見る。
+     * こうしておけば、URL の作り方が今後変わっても索引と食い違わない。
+     *
+     * 引けなかったときに 404 を返さないのは、`/tags/php/` のような JSON 表現を
+     * 持たない URL と区別が付かないため。索引に載っている path は必ず引けるので、
+     * 読み手が「あるはずのものを 404 と誤解する」ことは起きない。
+     */
+    private function post(string $path): ?Response
     {
         $post = $this->posts->findPublishedByPath($path, 'post');
 
         if (null === $post) {
-            return self::json(['error' => 'not_found', 'path' => $path], 404);
+            return null;
         }
 
         $id = $post['id'];
