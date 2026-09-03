@@ -185,12 +185,26 @@ fly ssh console -C "php /app/bin/refresh-caches.php"
 4. **`Accept: application/json` は Bypass cache**（「JSON で読む」の口を使うなら必須）
    - 対象: `(http.request.headers["accept"][0] contains "application/json")`
    - Cache eligibility: *Bypass cache*
-   - **1 のルールより上に置く**。Cache Rules は上から評価され、先に一致した
-     ものが勝つ。下に置くと HTML と同じ扱いのままになり、意味が無い。
+   - **1 のルールより下に置く**。Cache Rules は最初に一致したところで止まらず、
+     全部評価したうえで**最後に一致したルールが勝つ**
+     （[Order and priority](https://developers.cloudflare.com/cache/how-to/cache-rules/order/)）。
+     上に置くと、下の「Eligible for cache」が後から上書きして無効になる。
 
    これが無いと、既にキャッシュされている HTML が JSON 要求にも HIT する
    （オリジンに届かないのでアプリ側では防げない）。Custom Cache Key と違って
    bypass は無料プランでも作れる。
+
+   効いているかは `cf-cache-status` で見分ける。**アプリの `no-store` でも
+   `BYPASS` と表示される**ので、それだけでは判断できない。確かめるなら、
+   記事 URL を 2 回 HTML で叩いて `HIT` にしてから、同じ URL に
+   `Accept: application/json` を送る —— ルールが効いていれば `BYPASS` と
+   JSON が、効いていなければ `HIT` と HTML が返る。
+
+   ```bash
+   curl -sSI https://polidog.jp/2026/08/10/sf/ | grep -i cf-cache-status  # HIT にする
+   curl -sSI -H 'Accept: application/json' https://polidog.jp/2026/08/10/sf/ \
+     | grep -iE 'cf-cache-status|content-type'
+   ```
 
 トークンを設定しないあいだ purge は no-op になる（`s-maxage` が切れるまで
 古い内容が残るだけで、壊れはしない）。
