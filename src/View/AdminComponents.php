@@ -80,6 +80,11 @@ final class AdminComponents
         ['key' => 'image', 'label' => 'image', 'title' => '画像を選んでアップロード'],
     ];
 
+    /** スライドのエディタだけに足す記法ボタン。 */
+    private const array SLIDE_TOOLS = [
+        ['key' => 'slide', 'label' => '---', 'title' => 'ここでページを区切る'],
+    ];
+
     /**
      * 本文欄の下に出す操作の早見表。ツールバーに無い（キーでしか使えない）
      * ものだけを並べる —— ボタンのあるものは title に書いてある。
@@ -139,7 +144,13 @@ final class AdminComponents
     }
 
     /**
-     * 記事 / 固定ページのエディタ。
+     * 記事 / 固定ページ / スライドのエディタ。
+     *
+     * `$slides` を立てるとスライド用になる。違いは 3 つ —— プレビューが
+     * `/admin/preview` に `kind=slide` を添えて MarpRenderer の出力を受ける、
+     * プレビュー欄が `prose` ではなく `marp-preview`（marp.css の縦積み）に
+     * なる、ツールバーにページ区切りのボタンが増える。本文欄そのものは
+     * 同じで、Markdown の記法ボタンや画像のアップロードもそのまま効く。
      *
      * @param array<string, mixed> $post       既存の行（新規なら空配列）
      * @param list<string>         $tags
@@ -157,6 +168,7 @@ final class AdminComponents
         bool $withTaxonomy = true,
         ?string $deleteAction = null,
         bool $saved = false,
+        bool $slides = false,
     ): Element {
         // isset() は値が null のときも false になるので、null チェックは要らない。
         $value = static fn (string $key, string $default = ''): string => isset($post[$key])
@@ -174,10 +186,10 @@ final class AdminComponents
         $body = [
             ...$head,
             self::titleField($value('title')),
-            self::pathField($value('path')),
-            self::toolbar(),
+            self::pathField($value('path'), $slides ? '/slides/my-talk' : '/blog/2026/08/example'),
+            self::toolbar($slides),
             self::draftNotice(),
-            self::panes($value('body')),
+            self::panes($value('body'), $slides),
             self::hints(),
             // 「画像」ボタンが開くファイル選択。name を持たせないのは、
             // 保存フォームの POST に混ぜないため（送るのは別口の
@@ -203,6 +215,8 @@ final class AdminComponents
                 // localStorage に覚えていて、次に開いたときに復元する。
                 'data-preview' => 'off',
                 'data-preview-url' => '/admin/preview',
+                // スライドは変換器が違う。admin.js がこの値をそのまま kind に載せる。
+                'data-preview-kind' => $slides ? 'slide' : 'post',
                 'data-upload-url' => '/admin/media/upload',
                 // 書きかけを localStorage に退避するときのキー。保存先 URL は
                 // 記事ごとに違う（新規と編集も別）ので、そのまま識別子になる。
@@ -450,7 +464,7 @@ final class AdminComponents
         ]);
     }
 
-    private static function pathField(string $path): Element
+    private static function pathField(string $path, string $placeholder = '/blog/2026/08/example'): Element
     {
         return H::div(
             className: 'flex items-baseline gap-3',
@@ -461,7 +475,7 @@ final class AdminComponents
                     'name' => 'path',
                     'value' => $path,
                     'required' => true,
-                    'placeholder' => '/blog/2026/08/example',
+                    'placeholder' => $placeholder,
                     'aria-label' => 'URL（パス）',
                     'autocomplete' => 'off',
                     'spellcheck' => 'false',
@@ -476,7 +490,7 @@ final class AdminComponents
         );
     }
 
-    private static function toolbar(): Element
+    private static function toolbar(bool $slides = false): Element
     {
         $tools = \array_map(
             static fn (array $tool): Element => new Element('button', [
@@ -487,7 +501,7 @@ final class AdminComponents
                 'className' => 'rounded px-2 py-1 font-mono text-[0.6875rem] text-muted '
                     . 'transition-colors hover:bg-raised hover:text-ink',
             ], [$tool['label']]),
-            self::MARKDOWN_TOOLS,
+            $slides ? [...self::MARKDOWN_TOOLS, ...self::SLIDE_TOOLS] : self::MARKDOWN_TOOLS,
         );
 
         $right = [
@@ -528,7 +542,7 @@ final class AdminComponents
      * 揃えている（Tab は admin.js がスペース 2 個に置き換えるので、
      * 貼り付けで入った素のタブだけが tab-size を見る）。
      */
-    private static function panes(string $body): Element
+    private static function panes(string $body, bool $slides = false): Element
     {
         $textarea = new Element('textarea', [
             'name' => 'body',
@@ -539,7 +553,9 @@ final class AdminComponents
             // 来る utilities レイヤーの `text-sm`（line-height 込み）に負ける。
             'className' => 'editor-body block h-[70vh] min-h-[24rem] w-full resize-y rounded-lg bg-raised '
                 . 'p-5 font-mono text-sm leading-[1.9] text-ink placeholder:text-faint',
-            'placeholder' => 'Markdown で書く。画像はドロップか貼り付けでアップロードできる。',
+            'placeholder' => $slides
+                ? 'Marp の Markdown で書く。`---` の行でページが変わる。画像はドロップか貼り付けでアップロードできる。'
+                : 'Markdown で書く。画像はドロップか貼り付けでアップロードできる。',
         ], [$body]);
 
         $preview = new Element('div', [
@@ -548,7 +564,9 @@ final class AdminComponents
         ], [
             new Element('div', [
                 'data-editor-preview' => 'true',
-                'className' => 'prose',
+                // スライドのプレビューは記事の prose ではなく、公開ページと
+                // 同じ marp.css（AdminLayout が読み込む）で縦に積む。
+                'className' => $slides ? 'marp-preview' : 'prose',
             ], [
                 H::p(className: 'text-sm text-muted', children: '入力するとここに表示される。'),
             ]),

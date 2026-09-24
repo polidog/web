@@ -40,6 +40,7 @@ return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closu
                     {$stat('公開中の記事', $counts['posts'], '/admin/posts?status=published')}
                     {$stat('下書き', $counts['drafts'], '/admin/posts?status=draft')}
                     {$stat('固定ページ', $counts['pages'], '/admin/pages')}
+                    {$stat('スライド', $counts['slides'], '/admin/slides')}
                 </div>
 
                 <section>

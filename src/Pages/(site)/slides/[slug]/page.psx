@@ -1,0 +1,100 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\SiteDocument;
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\MarpDeck;
+use App\Support\PageCache;
+use App\Support\SiteConfig;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * スライドの閲覧ページ（`/slides/<slug>/`）。
+ *
+ * 保存済みの HTML（MarpRenderer の出力）をそのまま出す。記事と同じで
+ * 表示時に変換はしない。1 ページが `<svg viewBox>` に包まれているので、
+ * 幅に合わせた縮尺はブラウザがやる —— JS が要るのは全画面のプレゼン
+ * モードだけ（/assets/slides.js）。
+ *
+ * デッキの CSS（front matter の `style:`）は本文に置けない。usePHP の
+ * Renderer は文字列を必ずエスケープし、HtmlToElement は `<style>` を
+ * 落とすので、`SiteDocument::addHeadHtml()` で `<head>` に入れる。
+ * セレクタは保存時に `.marp` で括ってあるので、レイアウトには漏れない。
+ *
+ * marp.css を style.css に混ぜていないのは、記事 1,300 本のページに
+ * スライド用の CSS を配らないため。このページと管理画面だけが読む。
+ */
+return function (
+    PageContext $ctx,
+    PostRepository $posts,
+    PageMeta $meta,
+    SiteConfig $site,
+    SiteDocument $document,
+): Closure {
+    $path = '/slides/' . \rawurldecode((string) ($ctx->params['slug'] ?? ''));
+
+    $ctx->cache(PageCache::post($path));
+
+    return function () use ($ctx, $posts, $meta, $site, $document, $path): Element {
+        $slide = $posts->findPublishedByPath($path, 'slide') ?? $ctx->notFound();
+
+        $deck = MarpDeck::splitStored((string) $slide['html']);
+        $pages = MarpDeck::countPages($deck['html']);
+
+        $meta->apply(
+            path: $path,
+            title: (string) $slide['title'],
+            description: (string) ($slide['excerpt'] ?? ''),
+            ogType: 'article',
+            image: null !== $slide['eyecatch'] ? (string) $slide['eyecatch'] : null,
+        );
+
+        $document->addHeadHtml('<link rel="stylesheet" href="/assets/marp.css">');
+        if ('' !== \trim($deck['css'])) {
+            $document->addHeadHtml('<style>' . MarpDeck::escapeStyle($deck['css']) . '</style>');
+        }
+        $document->addHeadHtml('<script src="/assets/slides.js" defer></script>');
+
+        return (
+            <article>
+                <header>
+                    {Components::date((string) $slide['publishedAt'])}
+                    <h1 className="mt-3 text-[1.75rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]">
+                        {(string) $slide['title']}
+                    </h1>
+                </header>
+
+                <div className="mt-10">
+                    {Components::deck($deck['html'], $pages)}
+                </div>
+
+                <details className="mt-12">
+                    <summary className="cursor-pointer text-[0.8125rem] text-muted transition-colors hover:text-ink">
+                        Markdown（Marp）のソースを見る
+                    </summary>
+                    <pre className="mt-4 overflow-x-auto rounded bg-raised p-5 font-mono text-[0.8125rem] leading-relaxed text-ink">
+                        {(string) $slide['body']}
+                    </pre>
+                </details>
+
+                <div className="mt-16">
+                    <a
+                        href={\sprintf(
+                            'https://twitter.com/intent/tweet?url=%s&text=%s',
+                            \rawurlencode($site->absoluteUrl($path)),
+                            \rawurlencode((string) $slide['title']),
+                        )}
+                        className="text-[0.8125rem] text-muted transition-colors hover:text-accent"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >このスライドを X で共有 →</a>
+                </div>
+            </article>
+        );
+    };
+};

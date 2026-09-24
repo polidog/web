@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostRepository;
+use App\Support\PageCache;
+use App\View\Components;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * スライド一覧の 2 ページ目以降。`page` は静的セグメントなので
+ * `/slides/[slug]` より優先され、`page` という slug は使えない
+ * （PostFormMapper が保存時に弾く）。
+ */
+return function (PageContext $ctx, PostRepository $posts, PageMeta $meta): Closure {
+    $page = (int) ($ctx->params['n'] ?? 1);
+    if ($page < 2) {
+        $ctx->redirect('/slides/', 301);
+    }
+
+    $ctx->cache(PageCache::list());
+    $meta->apply(\sprintf('/slides/page/%d', $page), \sprintf('スライド %d ページ目', $page));
+    $meta->noindex();
+
+    return function () use ($ctx, $posts, $page): Element {
+        $list = $posts->listPublished($page, kind: 'slide');
+        if ([] === $list->items) {
+            $ctx->notFound();
+        }
+
+        return (
+            <div>
+                {Components::heading(\sprintf('スライド（%d / %d）', $list->page, $list->pages()))}
+                {Components::postList($list->items, 'まだスライドがありません。')}
+                {Components::pagination($list->page, $list->pages(), '/slides')}
+            </div>
+        );
+    };
+};

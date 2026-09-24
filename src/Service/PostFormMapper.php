@@ -42,6 +42,14 @@ final class PostFormMapper
         /** @var array<string, mixed> $data */
         $data = $result->data;
 
+        // スライドの URL は /slides/スラッグ の 1 階層に固定する。公開ページの
+        // ルートが `/slides/[slug]` なので、他の形で保存すると届く URL が無い。
+        // `page` は `/slides/page/[n]`（ページ送り）に取られていて使えない。
+        $path = PostInput::normalizePath((string) $data['path']);
+        if ('slide' === $kind && (!\preg_match('#^/slides/[^/]+$#', $path) || '/slides/page' === $path)) {
+            return ['input' => null, 'errors' => ['path' => 'スライドの URL は /slides/スラッグ の形にしてください。']];
+        }
+
         $publishedAt = null;
         $rawPublishedAt = $data['publishedAt'] ?? null;
         if (\is_string($rawPublishedAt) && '' !== $rawPublishedAt) {
@@ -56,7 +64,7 @@ final class PostFormMapper
         return [
             'input' => new PostInput(
                 kind: $kind,
-                path: PostInput::normalizePath((string) $data['path']),
+                path: $path,
                 title: (string) $data['title'],
                 body: (string) $data['body'],
                 status: (string) $data['status'],

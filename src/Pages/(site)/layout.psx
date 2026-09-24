@@ -35,6 +35,7 @@ final class RootLayout extends LayoutComponent
     /** @var list<array{href: string, label: string}> */
     private const array NAVIGATION = [
         ['href' => '/archives', 'label' => 'Archives'],
+        ['href' => '/slides', 'label' => 'Slides'],
         ['href' => '/tech-tags', 'label' => 'Tags'],
         ['href' => '/about', 'label' => 'About'],
     ];

@@ -9,7 +9,8 @@
  * 触る相手は AdminComponents::editor() が出す DOM で、契約は data 属性:
  *
  *   [data-editor]                フォーム本体。data-preview / data-preview-url /
- *                                data-upload-url / data-draft-key を持つ
+ *                                data-preview-kind / data-upload-url /
+ *                                data-draft-key を持つ
  *   [data-editor-body]           本文の textarea
  *   [data-editor-preview]        プレビューの差し込み先
  *   [data-editor-preview-pane]   プレビュー側のスクロール箱（同期する相手）
@@ -142,7 +143,12 @@
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          body: 'body=' + encodeURIComponent(rendered),
+          // kind はスライド（slide）か記事（post）か。サーバ側で変換器が変わる。
+          body:
+            'body=' +
+            encodeURIComponent(rendered) +
+            '&kind=' +
+            encodeURIComponent(form.dataset.previewKind || 'post'),
         })
         .then(function (response) {
           if (!response.ok) {
@@ -344,6 +350,10 @@
         });
       } else if (key === 'table') {
         insertTable();
+      } else if (key === 'slide') {
+        // Marp のページ区切り。前後を空行で挟まないと段落に飲まれて
+        // 見出しの下線（setext）として解釈されることがある。
+        insert('\n\n---\n\n');
       } else if (key === 'image') {
         if (file) {
           file.click();

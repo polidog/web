@@ -107,6 +107,41 @@ Cloudflare は `Accept` をキャッシュキーに入れず `Vary: Accept` も�
 下書きも読みたいときは JSON ではなく MCP（`/mcp`）を使う。こちらは公開済み
 だけを返す代わりに、認証が要らない。
 
+## スライド（Marp）
+
+`/slides/` に Marp 形式の Markdown で書いた発表資料を置ける。管理画面の
+「スライド」から作り、`---` の行でページを区切る。手元の Marp（VS Code
+拡張や marp-cli）で書いたファイルをそのまま貼ればよい。
+
+```markdown
+---
+marp: true
+theme: gaia          # default / gaia / uncover
+paginate: true
+style: |
+  section h1 { color: #0288d1 }
+---
+
+<!-- _class: lead -->
+
+# タイトル
+
+---
+
+![bg right:40%](/images/2026/09/photo.jpg)
+
+## 2 枚目
+```
+
+変換はサーバの PHP（`MarpRenderer`）が保存時に 1 度だけ行う。ページ分割、
+ディレクティブ、`![bg]` の分割・並置・フィルタ、`![w:300]` の画像サイズ、
+3 つの組み込みテーマ相当の見た目、`style:` の上書きに対応する。数式と
+`<!-- fit -->` の自動縮小は扱わない。閲覧ページの「全画面で見る」で
+1 枚ずつ送るプレゼンモードになる（矢印キー・クリック・スワイプ）。
+
+スライドは記事一覧・RSS・JSON 索引には混ざらない。URL は
+`/slides/スラッグ/` に固定。
+
 ## 移行
 
 ```bash

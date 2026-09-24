@@ -1,0 +1,93 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Service\PageMeta;
+use App\Service\PostFormMapper;
+use App\Service\PostWriter;
+use App\Support\PageCache;
+use App\View\AdminComponents;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * スライドの新規作成。保存すると PostWriter が MarpRenderer で
+ * デッキの HTML を起こし、ETag を差し替え、Cloudflare を purge する
+ * ところまでやる（記事と同じ経路、変換器だけ違う）。
+ *
+ * 本文の初期値は Marp の最小構成。front matter の `marp: true` は
+ * このサイトでは要らないが、手元の Marp（VS Code 拡張・marp-cli）で
+ * 同じファイルをそのまま開けるように残してある。
+ */
+return function (
+    PageContext $ctx,
+    PostWriter $writer,
+    PostFormMapper $mapper,
+    PageMeta $meta,
+): Closure {
+    $user = $ctx->requireAuth(['admin'], '/admin/login');
+    $ctx->cache(PageCache::admin());
+    $meta->apply('/admin/slides/new', '新しいスライド');
+
+    $errors = [];
+    $submitted = [];
+
+    $save = $ctx->action('save', function (array $form) use ($writer, $mapper, $ctx, $user, &$errors, &$submitted): void {
+        $submitted = $form;
+        $mapped = $mapper->map($form, 'slide', (int) $user->id);
+
+        if (null === $mapped['input']) {
+            $errors = \array_values($mapped['errors']);
+
+            return;
+        }
+
+        $slide = $writer->save($mapped['input']);
+        $ctx->redirect(\sprintf('/admin/slides/%d?saved=1', (int) $slide['id']));
+    });
+
+    return function () use ($save, &$errors, &$submitted): Element {
+        $template = <<<'MD'
+            ---
+            marp: true
+            theme: default
+            paginate: true
+            ---
+
+            <!-- _class: lead -->
+            <!-- _paginate: false -->
+
+            # タイトル
+
+            polidog
+
+            ---
+
+            ## 1 枚目
+
+            - 話すこと
+            - もう 1 つ
+
+            MD;
+
+        $post = [] !== $submitted
+            ? $submitted
+            : ['path' => '/slides/', 'body' => $template];
+
+        return (
+            <div>
+                {AdminComponents::breadcrumb('/admin/slides', 'スライド', '新規')}
+                {AdminComponents::editor(
+                    saveAction: $save,
+                    post: $post,
+                    indexHref: '/admin/slides',
+                    indexLabel: 'スライド一覧',
+                    errors: $errors,
+                    withTaxonomy: false,
+                    slides: true,
+                )}
+            </div>
+        );
+    };
+};
