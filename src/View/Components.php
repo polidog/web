@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View;
 
+use App\Support\HtmlToElement;
 use App\Support\HugoSlug;
 use App\Support\SiteConfig;
 use Polidog\UsePhp\Html\H;
@@ -73,11 +74,12 @@ final class Components
      * 記事一覧。年の変わり目に年号を差し込む。
      *
      * @param list<PostListRow> $posts 新しい順に並んだ記事
+     * @param string            $empty 0 件のときの文言（スライド一覧は主語が違う）
      */
-    public static function postList(array $posts): Element
+    public static function postList(array $posts, string $empty = 'まだ記事がありません。'): Element
     {
         if ([] === $posts) {
-            return self::empty();
+            return self::empty($empty);
         }
 
         $children = [];
@@ -408,11 +410,76 @@ final class Components
         );
     }
 
-    private static function empty(): Element
+    /**
+     * スライドのデッキ（MarpRenderer の出力）とその操作部。
+     *
+     * 通常は 1 ページずつ縦に積んで見せる。`bg-raised` の面に載せるのは、
+     * 白いテーマのスライドが surface と同化して縁が消えるため —— 罫線を
+     * 引かない代わりに面の差で輪郭を出す（アイキャッチと同じ扱い）。
+     *
+     * 全画面のプレゼンモードは /assets/slides.js が `data-slides-*` を拾って
+     * `data-mode` を書き換える。見た目の切り替えは public/assets/marp.css の
+     * `.marp-view[data-mode="present"]`。Tailwind の外にある CSS なので、
+     * JS から触っても「スキャンされずに消える」ことはない。
+     */
+    public static function deck(string $html, int $pages): Element
+    {
+        return new Element('div', [
+            'className' => 'marp-view',
+            'data-slides' => 'true',
+            'data-mode' => 'scroll',
+        ], [
+            H::div(
+                className: 'mb-3 flex items-baseline justify-between gap-4',
+                children: [
+                    new Element('button', [
+                        'type' => 'button',
+                        'data-slides-present' => 'true',
+                        'className' => 'text-[0.8125rem] text-muted transition-colors hover:text-accent',
+                    ], ['全画面で見る →']),
+                    H::span(
+                        className: 'font-mono text-xs tracking-wide text-muted',
+                        children: \sprintf('全 %d 枚', $pages),
+                    ),
+                ],
+            ),
+            new Element('div', [
+                'className' => 'marp-stage rounded bg-raised p-3 sm:p-4',
+                'data-slides-stage' => 'true',
+                'tabindex' => '-1',
+            ], [
+                HtmlToElement::convert($html),
+                new Element('div', [
+                    'className' => 'marp-hud',
+                    'data-slides-hud' => 'true',
+                    'hidden' => true,
+                ], [
+                    new Element('button', [
+                        'type' => 'button',
+                        'data-slides-prev' => 'true',
+                        'aria-label' => '前のページ',
+                    ], ['←']),
+                    new Element('span', ['data-slides-counter' => 'true'], [\sprintf('1 / %d', $pages)]),
+                    new Element('button', [
+                        'type' => 'button',
+                        'data-slides-next' => 'true',
+                        'aria-label' => '次のページ',
+                    ], ['→']),
+                    new Element('button', [
+                        'type' => 'button',
+                        'data-slides-close' => 'true',
+                        'aria-label' => '全画面をやめる',
+                    ], ['✕']),
+                ]),
+            ]),
+        ]);
+    }
+
+    private static function empty(string $message = 'まだ記事がありません。'): Element
     {
         return H::p(
             className: 'text-[0.9375rem] text-muted',
-            children: 'まだ記事がありません。',
+            children: $message,
         );
     }
 }

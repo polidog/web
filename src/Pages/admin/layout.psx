@@ -35,6 +35,7 @@ final class AdminLayout extends LayoutComponent
         ['href' => '/admin', 'label' => 'ダッシュボード'],
         ['href' => '/admin/posts', 'label' => '記事'],
         ['href' => '/admin/pages', 'label' => 'ページ'],
+        ['href' => '/admin/slides', 'label' => 'スライド'],
         ['href' => '/admin/media', 'label' => '画像'],
     ];
 
@@ -48,6 +49,8 @@ final class AdminLayout extends LayoutComponent
     public function render(): Element
     {
         $this->document->addHeadHtml('<script src="/assets/admin.js" defer></script>');
+        // スライドのプレビュー用。公開側の /slides/ と同じ CSS を読む。
+        $this->document->addHeadHtml('<link rel="stylesheet" href="/assets/marp.css">');
 
         $user = $this->auth?->user();
 

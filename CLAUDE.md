@@ -322,6 +322,58 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
   textarea の undo 履歴に残る挿入手段はこれしかない。`value` を直接
   書き換えると Ctrl+Z で戻せなくなる。
 
+### スライド（Marp）
+
+`/slides/` と `/slides/<slug>/` は Marp 形式の Markdown で書いた発表資料。
+**保存先は Post テーブルの `kind = 'slide'`** で、テーブルも列も増やして
+いない。URL は path が持ち（`/slides/スラッグ` の 1 階層に限る —
+`PostFormMapper` が弾く）、保存は記事と同じ `PostWriter::save()` を通る
+ので ETag の差し替え・purge・公開の切り替えも同じ経路で動く。違うのは
+変換器だけで、`kind` を見て `MarpRenderer` に振り分けている。
+
+- **Marp の変換は PHP で自前実装**（`App\Service\MarpRenderer`）。本家
+  marp-core は Node のライブラリで、本番イメージには Node が入っていない
+  （Tailwind のビルドステージにしか無い）。league/commonmark の上に
+  Marp 固有の部分 —— `---` でのページ分割、`headingDivider`、コメントの
+  ディレクティブ（`_` 付きはそのページだけ）、`![bg]`（`left` / `right:40%`
+  / `vertical` / 複数枚 / `contain` / フィルタ）、`![w:300]` の画像サイズ ——
+  だけを足してある。**扱わないもの**: 数式、`<!-- fit -->` の自動縮小、
+  絵文字ショートコード、`<style scoped>` のページ単位スコープ。発表者
+  ノート（ディレクティブでないコメント）は出力から落とす。
+- **1 ページは `<svg viewBox>` + `<foreignObject>` に包む**（Marp の
+  `inlineSVG` と同じ）。section は 1280×720 固定で組み、viewBox が親の
+  幅に合わせて丸ごと縮尺するので、JS もリサイズ監視も要らない。
+  `HtmlToElement` はこの SVG を通せる（`<foreignobject>` と小文字になるが
+  ブラウザの HTML パーサが SVG 名として直す）。
+- **テーマ CSS は `public/assets/marp.css`**（default / gaia / uncover の
+  近似）。style.css には混ぜない —— 記事 1,300 本のページに配らないため。
+  読むのはスライドのページ（`addHeadHtml`）と `AdminLayout` だけ。
+  セレクタはすべて `.marp` の中に閉じ、色はサイトの CSS 変数を使わない
+  （デッキは自分の色を持つもので、ダークモードに追従させない）。
+- **front matter の `style:` と本文の `<style>` は `ScopedCss` が
+  `.marp.marp` を前置してから保存する。** `section h1 { … }` と書けば
+  本家と同じ感覚で効く。接頭辞を 2 重にしているのは詳細度のためで、
+  テーマ側の `.marp[data-marp-theme=…] section h1` (0,2,2) に
+  `.marp section h1` (0,1,2) では負ける。`@layer` にしないのは、Tailwind の
+  preflight（無層）が層の中のテーマを全部踏み潰すから。
+- **CSS は `Post.html` の先頭に `<style data-marp-style>` として抱き合わせて
+  保存する**（`MarpDeck::storable()` / `splitStored()`）。列を増やさない
+  ための小技で、表示側は分けてから使う —— 本文に `<style>` を置いても
+  usePHP がエスケープし `HtmlToElement` が落とすので、CSS は
+  `SiteDocument::addHeadHtml()` で `<head>` に入れる。抜粋は front matter の
+  `description`、無ければ各ページの文字を繋いだもの（CSS は混ぜない）。
+- **全画面のプレゼンモードは `public/assets/slides.js`**。状態は
+  `data-mode` / `data-current` で持ち、見た目の切り替えは marp.css の
+  `.marp-view[data-mode="present"]`。Fullscreen API が無い端末（iPhone）
+  でも固定配置で同じ見え方になる。`#3` の hash が 3 枚目。
+- 管理画面のエディタは記事と共通で、`slides: true` を渡すとプレビューが
+  `/admin/preview` に `kind=slide` を添え、欄が `prose` ではなく
+  `marp-preview` になる。プレビューの HTML は `<style>` 込みで返し、
+  innerHTML でそのまま効かせる。
+- スライドは記事一覧・RSS・JSON 索引・タグページには出ない（どれも
+  `kind = 'post'` で絞っている）。MCP の `create_post` は `kind: slide` を
+  受ける。
+
 ### Claude コネクタ（MCP + OAuth）
 
 `/mcp` が remote MCP サーバー、`/oauth/*` と `/.well-known/*` がその認証。

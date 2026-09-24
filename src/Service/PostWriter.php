@@ -33,6 +33,7 @@ final class PostWriter
         private readonly TehilimClient $db,
         private readonly PostRepository $posts,
         private readonly MarkdownRenderer $markdown,
+        private readonly MarpRenderer $marp,
         private readonly EtagStore $etags,
         private readonly CachePurger $purger,
     ) {}
@@ -51,8 +52,22 @@ final class PostWriter
     public function save(PostInput $input, ?int $id = null): array
     {
         $path = PostInput::normalizePath($input->path);
-        $html = $this->markdown->render($input->body);
         $now = new DateTimeImmutable();
+
+        // スライドだけ変換器が違う。デッキの CSS は html 列の先頭に
+        // 抱き合わせて入れる（MarpDeck::storable() と splitStored() が対）。
+        // 抜粋は front matter の description があればそれ、無ければ
+        // 各ページの文字を繋いだもの（CSS は混ぜない）。
+        if ('slide' === $input->kind) {
+            $deck = $this->marp->render($input->body);
+            $html = $deck->storable();
+            $excerpt = null !== $deck->description && '' !== $deck->description
+                ? $deck->description
+                : $this->markdown->excerpt($deck->html);
+        } else {
+            $html = $this->markdown->render($input->body);
+            $excerpt = $this->markdown->excerpt($html);
+        }
 
         $previous = null !== $id
             ? $this->posts->findById($id)
@@ -73,7 +88,7 @@ final class PostWriter
             'title' => $input->title,
             'body' => $input->body,
             'html' => $html,
-            'excerpt' => $this->markdown->excerpt($html),
+            'excerpt' => $excerpt,
             'eyecatch' => $input->eyecatch,
             'status' => $input->status,
             'publishedAt' => $publishedAt,

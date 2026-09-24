@@ -1,0 +1,479 @@
+/*
+ * スライド（MarpRenderer の出力）の見た目。
+ *
+ * Tailwind のビルドには入れず、スライドのページと管理画面だけが読む
+ * （記事 1,300 本のページには配らない）。ここに書くセレクタはすべて
+ * `.marp` の中に閉じている —— front matter の `style:` も保存時に
+ * ScopedCss が同じ接頭辞を付けるので、本家 Marp のテーマと同じ書き方
+ * （`section h1 { … }`）で上書きできる。
+ *
+ * 色はサイトの CSS 変数を使わない。スライドはデッキが自分の色を持つもので、
+ * サイトのダークモードに追従させると発表時と見た目が変わってしまう。
+ * コードブロックの色だけは style.css の `--color-code-*` を借り、暗い
+ * テーマではその変数を .dark と同じ値に差し替える。
+ *
+ * 3 つのテーマは marp-core の default / gaia / uncover の近似。寸法・級・
+ * 余白・クラス（lead / invert / gaia）の意味を合わせてあり、細部までは
+ * 追っていない。
+ */
+
+/* ---- 器 ------------------------------------------------------------- */
+
+.marp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.marp .marp-slide {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+/* ---- section の土台（Marpit 相当） ------------------------------------ */
+
+.marp section {
+  --marp-bg: #fff;
+  --marp-fg: #24292e;
+  --marp-highlight: #0969da;
+  --marp-dimmed: #6a737d;
+  --marp-hairline: rgba(0, 0, 0, 0.12);
+  --marp-code-bg: rgba(0, 0, 0, 0.05);
+
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  padding: 70px;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+  justify-content: center;
+  background: var(--marp-bg);
+  color: var(--marp-fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif;
+  font-size: 35px;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+.marp section > *:first-child,
+.marp section > header:first-child + * {
+  margin-top: 0;
+}
+
+.marp section > *:last-child,
+.marp section > * + footer:last-child {
+  margin-bottom: 0;
+}
+
+.marp section h1,
+.marp section h2,
+.marp section h3,
+.marp section h4,
+.marp section h5,
+.marp section h6 {
+  margin: 0.5em 0 0.25em;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.marp section h1 {
+  font-size: 1.6em;
+}
+
+.marp section h2 {
+  font-size: 1.3em;
+}
+
+.marp section h3 {
+  font-size: 1.1em;
+}
+
+.marp section h4 {
+  font-size: 1em;
+}
+
+.marp section h5 {
+  font-size: 0.9em;
+}
+
+.marp section h6 {
+  font-size: 0.8em;
+}
+
+.marp section p,
+.marp section blockquote,
+.marp section ul,
+.marp section ol,
+.marp section table,
+.marp section pre {
+  margin: 0 0 0.45em;
+}
+
+.marp section ul,
+.marp section ol {
+  padding-left: 1.4em;
+}
+
+.marp section li {
+  margin: 0.1em 0;
+}
+
+.marp section a {
+  color: var(--marp-highlight);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.marp section strong {
+  font-weight: 700;
+}
+
+.marp section blockquote {
+  padding-left: 0.6em;
+  border-left: 0.15em solid var(--marp-hairline);
+  color: var(--marp-dimmed);
+}
+
+.marp section blockquote > *:last-child {
+  margin-bottom: 0;
+}
+
+.marp section code,
+.marp section pre {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+.marp section code {
+  padding: 0.1em 0.3em;
+  border-radius: 0.2em;
+  background: var(--marp-code-bg);
+  font-size: 0.85em;
+}
+
+.marp section pre {
+  padding: 0.5em 0.7em;
+  border-radius: 0.25em;
+  background: var(--marp-code-bg);
+  font-size: 0.7em;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+.marp section pre code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+.marp section table {
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.marp section th,
+.marp section td {
+  padding: 0.2em 0.6em;
+  border: 1px solid var(--marp-hairline);
+  text-align: left;
+}
+
+.marp section th {
+  font-weight: 600;
+}
+
+.marp section img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.marp section hr {
+  margin: 0.5em 0;
+  border: 0;
+  border-top: 1px solid var(--marp-hairline);
+}
+
+/* header / footer / ページ番号。流れの外に置く（Marp 既定と同じ配置）。 */
+.marp section > header,
+.marp section > footer,
+.marp section[data-marpit-pagination]::after {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 20px 30px;
+  height: 70px;
+  line-height: 30px;
+  overflow: hidden;
+  color: var(--marp-dimmed);
+  font-size: 0.5em;
+}
+
+.marp section > header {
+  top: 0;
+}
+
+.marp section > footer {
+  bottom: 0;
+}
+
+.marp section[data-marpit-pagination]::after {
+  content: attr(data-marpit-pagination);
+  left: auto;
+  bottom: 0;
+  width: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- クラス -------------------------------------------------------- */
+
+.marp section.lead {
+  justify-content: center;
+}
+
+.marp section.lead h1,
+.marp section.lead h2,
+.marp section.lead h3,
+.marp section.lead h4,
+.marp section.lead h5,
+.marp section.lead h6,
+.marp section.lead p {
+  text-align: center;
+}
+
+.marp section.invert {
+  --marp-bg: #181a1f;
+  --marp-fg: #e9e9e5;
+  --marp-highlight: #8fbbd4;
+  --marp-dimmed: #9a9ba3;
+  --marp-hairline: rgba(255, 255, 255, 0.18);
+  --marp-code-bg: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- gaia ---------------------------------------------------------- */
+
+.marp[data-marp-theme='gaia'] section {
+  --marp-bg: #fff8e1;
+  --marp-fg: #455a64;
+  --marp-highlight: #0288d1;
+  --marp-dimmed: #78909c;
+  --marp-hairline: rgba(69, 90, 100, 0.25);
+  --marp-code-bg: rgba(69, 90, 100, 0.08);
+
+  justify-content: flex-start;
+  font-size: 35px;
+}
+
+.marp[data-marp-theme='gaia'] section h1,
+.marp[data-marp-theme='gaia'] section h2 {
+  color: var(--marp-highlight);
+}
+
+.marp[data-marp-theme='gaia'] section.lead {
+  justify-content: center;
+}
+
+.marp[data-marp-theme='gaia'] section.invert {
+  --marp-bg: #455a64;
+  --marp-fg: #fff8e1;
+  --marp-highlight: #81d4fa;
+  --marp-dimmed: #b0bec5;
+  --marp-hairline: rgba(255, 248, 225, 0.25);
+  --marp-code-bg: rgba(255, 255, 255, 0.1);
+}
+
+.marp[data-marp-theme='gaia'] section.gaia {
+  --marp-bg: #0288d1;
+  --marp-fg: #fff;
+  --marp-highlight: #fff;
+  --marp-dimmed: #e1f5fe;
+  --marp-hairline: rgba(255, 255, 255, 0.3);
+  --marp-code-bg: rgba(255, 255, 255, 0.14);
+}
+
+/* ---- uncover ------------------------------------------------------- */
+
+.marp[data-marp-theme='uncover'] section {
+  --marp-bg: #fff;
+  --marp-fg: #202228;
+  --marp-highlight: #009dd5;
+  --marp-dimmed: #7d8089;
+  --marp-hairline: rgba(32, 34, 40, 0.16);
+  --marp-code-bg: rgba(32, 34, 40, 0.06);
+
+  padding: 45px;
+  justify-content: center;
+  text-align: center;
+  font-size: 40px;
+  letter-spacing: 0.01em;
+}
+
+.marp[data-marp-theme='uncover'] section h1,
+.marp[data-marp-theme='uncover'] section h2,
+.marp[data-marp-theme='uncover'] section h3 {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.marp[data-marp-theme='uncover'] section ul,
+.marp[data-marp-theme='uncover'] section ol {
+  display: inline-block;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.marp[data-marp-theme='uncover'] section pre,
+.marp[data-marp-theme='uncover'] section table {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.marp[data-marp-theme='uncover'] section > header,
+.marp[data-marp-theme='uncover'] section > footer {
+  text-align: center;
+}
+
+.marp[data-marp-theme='uncover'] section.invert {
+  --marp-bg: #202228;
+  --marp-fg: #fff;
+  --marp-highlight: #66c9ef;
+  --marp-dimmed: #a7a9b1;
+  --marp-hairline: rgba(255, 255, 255, 0.2);
+  --marp-code-bg: rgba(255, 255, 255, 0.09);
+}
+
+/* 暗い面のうえのコードは style.css の .dark と同じ配色にする。 */
+.marp section.invert,
+.marp[data-marp-theme='gaia'] section.gaia {
+  --color-code-keyword: 255 123 114;
+  --color-code-entity: 210 168 255;
+  --color-code-constant: 121 192 255;
+  --color-code-string: 165 214 255;
+  --color-code-builtin: 255 166 87;
+  --color-code-comment: 148 157 167;
+  --color-code-tag: 126 231 135;
+}
+
+/* ---- 背景画像のレイヤー ------------------------------------------------ */
+
+.marp section[data-marp-layer='background'] {
+  display: block;
+  padding: 0;
+}
+
+.marp .marp-bg {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.marp .marp-bg figure {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* ---- 公開ページの閲覧部 ------------------------------------------------ */
+
+.marp-view .marp-stage {
+  position: relative;
+  outline: none;
+}
+
+.marp-view .marp-hud {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.marp-view .marp-hud button {
+  margin: 0;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.marp-view .marp-hud button:hover,
+.marp-view .marp-hud button:focus-visible {
+  opacity: 1;
+}
+
+.marp-view .marp-hud span {
+  padding: 0 0.375rem;
+}
+
+/*
+ * プレゼンモード。ページ全体を覆い、1 枚だけを画面に収める。
+ * Fullscreen API が使えない端末（iPhone）でも固定配置で同じ見え方になる。
+ */
+.marp-view[data-mode='present'] .marp-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.marp-view[data-mode='present'] .marp {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.marp-view[data-mode='present'] .marp-slide {
+  display: none;
+}
+
+.marp-view[data-mode='present'] .marp-slide[data-current] {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.marp-view[data-mode='present'] .marp-hud {
+  right: 1rem;
+  bottom: 1rem;
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+.marp-view[data-mode='present'] .marp-stage:hover .marp-hud,
+.marp-view[data-mode='present'] .marp-hud:focus-within {
+  opacity: 1;
+}

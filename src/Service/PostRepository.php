@@ -167,7 +167,7 @@ final class PostRepository
     /**
      * ダッシュボードの件数表示。
      *
-     * @return array{posts: int, drafts: int, pages: int}
+     * @return array{posts: int, drafts: int, pages: int, slides: int}
      */
     public function counts(): array
     {
@@ -175,7 +175,8 @@ final class PostRepository
             'SELECT
                SUM(CASE WHEN kind = \'post\' AND status = \'published\' THEN 1 ELSE 0 END) AS posts,
                SUM(CASE WHEN status = \'draft\' THEN 1 ELSE 0 END) AS drafts,
-               SUM(CASE WHEN kind = \'page\' THEN 1 ELSE 0 END) AS pages
+               SUM(CASE WHEN kind = \'page\' THEN 1 ELSE 0 END) AS pages,
+               SUM(CASE WHEN kind = \'slide\' THEN 1 ELSE 0 END) AS slides
              FROM "Post"',
         )->fetch();
         $counts = \is_array($row) ? $row : [];
@@ -184,6 +185,7 @@ final class PostRepository
             'posts' => (int) ($counts['posts'] ?? 0),
             'drafts' => (int) ($counts['drafts'] ?? 0),
             'pages' => (int) ($counts['pages'] ?? 0),
+            'slides' => (int) ($counts['slides'] ?? 0),
         ];
     }
 
@@ -220,23 +222,24 @@ final class PostRepository
     }
 
     /**
-     * トップと /page/N の一覧。
+     * トップと /page/N の一覧。`$kind` を `slide` にすると /slides/ の一覧。
      *
      * @return Paginated<PostListRow>
      */
-    public function listPublished(int $page, int $perPage = self::PER_PAGE): Paginated
+    public function listPublished(int $page, int $perPage = self::PER_PAGE, string $kind = 'post'): Paginated
     {
         $total = (int) $this->run(
-            'SELECT COUNT(*) FROM "Post" WHERE kind = \'post\' AND status = \'published\'',
+            'SELECT COUNT(*) FROM "Post" WHERE kind = :kind AND status = \'published\'',
+            ['kind' => $kind],
         )->fetchColumn();
 
         $rows = $this->fetchAll(
             $this->run(
                 self::SELECT_LIST . ' FROM "Post" p
-                 WHERE p.kind = \'post\' AND p.status = \'published\'
+                 WHERE p.kind = :kind AND p.status = \'published\'
                  ORDER BY p.publishedAt DESC, p.id DESC
                  LIMIT :limit OFFSET :offset',
-                self::window($page, $perPage),
+                ['kind' => $kind] + self::window($page, $perPage),
             ),
             self::listRow(...),
         );

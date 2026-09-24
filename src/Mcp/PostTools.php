@@ -71,8 +71,8 @@ final readonly class PostTools
                     'properties' => [
                         'kind' => [
                             'type' => 'string',
-                            'enum' => ['post', 'page'],
-                            'description' => 'post はブログ記事、page は固定ページ。既定は post。',
+                            'enum' => ['post', 'page', 'slide'],
+                            'description' => 'post はブログ記事、page は固定ページ、slide は Marp のスライド。既定は post。',
                         ],
                         'status' => [
                             'type' => 'string',
@@ -108,7 +108,12 @@ final readonly class PostTools
                             'type' => 'string',
                             'description' => 'URL のパス。スラッシュで始める（例 /2026/08/16/hello/）。',
                         ],
-                        'kind' => ['type' => 'string', 'enum' => ['post', 'page'], 'description' => '既定は post。'],
+                        'kind' => [
+                            'type' => 'string',
+                            'enum' => ['post', 'page', 'slide'],
+                            'description' => '既定は post。slide は Marp 形式の Markdown で、'
+                                . 'path は /slides/スラッグ/ の形に限る。',
+                        ],
                     ] + $writable,
                     'required' => ['path', 'title', 'body'],
                 ],
@@ -211,7 +216,7 @@ final readonly class PostTools
         $status = $args->has('status') ? $args->enum('status', ['draft', 'published'], 'draft') : null;
 
         $list = $this->posts->listForAdmin(
-            $args->enum('kind', ['post', 'page'], 'post'),
+            $args->enum('kind', ['post', 'page', 'slide'], 'post'),
             \max(1, $args->int('page', 1)),
             $status,
             $args->string('query'),
@@ -266,7 +271,7 @@ final readonly class PostTools
             'categories' => \implode(',', $args->stringList('categories') ?? []),
         ];
 
-        $saved = $this->save($form, $args->enum('kind', ['post', 'page'], 'post'), null);
+        $saved = $this->save($form, $args->enum('kind', ['post', 'page', 'slide'], 'post'), null);
 
         return ['created' => true] + $saved;
     }
