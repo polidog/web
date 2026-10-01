@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\SiteDocument;
+use App\Service\PageMeta;
+use App\Support\PageCache;
+use Polidog\Relayer\Router\Component\PageContext;
+use Polidog\UsePhp\Html\H;
+use Polidog\UsePhp\Runtime\Element;
+
+/**
+ * お問い合わせ（`/contact/`）。フォームは inqbox の埋め込み。
+ *
+ * ページ内にインライン `<script>` は書けないので、ウィジェットは
+ * `addHeadHtml()` で `<head>` に入れる。`defer` にしているのは
+ * `data-inqbox-form` が DOM にできてから走らせるため。`async` は付けない
+ * （inqbox が公開キーを読めなくなる —— https://inqbox.jp/docs/embed）。
+ *
+ * 中身は固定なので、キャッシュは一覧と同じ 5 分で足りる。
+ */
+return function (PageContext $ctx, PageMeta $meta, SiteDocument $document): Closure {
+    $ctx->cache(PageCache::list());
+
+    return function () use ($meta, $document): Element {
+        $meta->apply(path: '/contact', title: 'お問い合わせ', description: 'polidog へのお問い合わせ');
+
+        $document->addHeadHtml('<script src="https://inqbox.jp/widget.js" data-key="pk_HIc2S75Sr_6Z7j9bzLYLxQ2GJXhldILq" defer></script>');
+
+        return (
+            <article>
+                <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-ink sm:text-[2rem]">
+                    お問い合わせ
+                </h1>
+                <div className="mt-12" data-inqbox-form=""></div>
+            </article>
+        );
+    };
+};
