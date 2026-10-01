@@ -38,6 +38,7 @@ final class RootLayout extends LayoutComponent
         ['href' => '/slides', 'label' => 'Slides'],
         ['href' => '/tech-tags', 'label' => 'Tags'],
         ['href' => '/about', 'label' => 'About'],
+        ['href' => '/contact', 'label' => 'Contact'],
     ];
 
     public function __construct(private readonly SiteConfig $site) {}
@@ -143,6 +144,7 @@ final class RootLayout extends LayoutComponent
                         <nav className="flex gap-6 text-[0.8125rem] text-muted">
                             <a href="/about" className="transition-colors hover:text-ink">About</a>
                             <a href="/tech-tags" className="transition-colors hover:text-ink">Tags</a>
+                            <a href="/contact" className="transition-colors hover:text-ink">Contact</a>
                             <a href="/index.xml" className="transition-colors hover:text-ink">RSS</a>
                         </nav>
                         <p className="font-mono text-xs tracking-wide text-muted">
