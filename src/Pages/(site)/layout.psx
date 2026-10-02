@@ -16,7 +16,7 @@ use Polidog\UsePhp\Runtime\Element;
  * 付ける（`Components` 側も同じ方針で、`border-*` はほぼ出てこない）。
  * 幅は `max-w-measure`（44rem）で、外殻・一覧・記事本文すべて同じ measure に
  * 揃えてある——読み物として 1 本の柱に見せたいので、ページごとに幅を
- * 変えない。
+ * 変えない。lg 以上では右に写真が入って見開きになるが、柱の幅は同じ。
  *
  * 等幅（`font-mono`）はサイト名・日付・年号・ページ番号にだけ使う。
  * 「識別子と時間は等幅」という 1 本の規則にしてあるので、それ以外の語には
@@ -41,6 +41,21 @@ final class RootLayout extends LayoutComponent
         ['href' => '/contact', 'label' => 'Contact'],
     ];
 
+    /**
+     * 見開きの写真の出どころ。キーは `public/assets/spread/` のファイル名で、
+     * <html> の `data-photo` と同じ語。写真を差し替えたらここも直すこと
+     * ——クレジットは写真の上にそのまま出る。
+     *
+     * @var array<string, array{name: string, url: string}>
+     */
+    private const array PHOTO_CREDITS = [
+        'spring' => ['name' => 'Jaz. Mine', 'url' => 'https://unsplash.com/photos/tdQftCj4dE8'],
+        'autumn' => ['name' => 'Se. Tsuchiya', 'url' => 'https://unsplash.com/photos/5zmPHCpv0AA'],
+        'winter' => ['name' => 'Sergio', 'url' => 'https://unsplash.com/photos/eu5xKIUAF-k'],
+        'rain' => ['name' => 'Robert Bant', 'url' => 'https://unsplash.com/photos/1F4M9_U5R_U'],
+        'snow' => ['name' => 'Zhi Xuan Hew', 'url' => 'https://unsplash.com/photos/R77Z2qS_cDw'],
+    ];
+
     public function __construct(private readonly SiteConfig $site) {}
 
     public function render(): Element
@@ -59,7 +74,49 @@ final class RootLayout extends LayoutComponent
                     </div>
                 </main>
                 {$this->footer()}
+                {$this->spreadPhoto()}
             </div>
+        );
+    }
+
+    /**
+     * 見開きの右ページ（lg 以上だけ）。置き方は assets/tailwind.css の
+     * `.spread-photo` が決めていて、ここは写真の面と縦書きの柱（誌名）、
+     * それに撮影者のクレジット。
+     *
+     * どの写真が出るかはブラウザ側で決まるので、クレジットは全部出力して
+     * おき、CSS が `data-photo` に合う 1 つだけを見せる。柱は飾りなので
+     * 読み上げには出さないが、クレジットはリンクなので隠さない。
+     */
+    private function spreadPhoto(): Element
+    {
+        return (
+            <div className="spread-photo">
+                <p
+                    className="absolute bottom-10 left-0 bg-surface py-4 pl-2 pr-3 font-mono text-[0.6875rem] tracking-[0.2em] text-muted [writing-mode:vertical-rl]"
+                    aria-hidden="true"
+                >
+                    {$this->site->title}
+                </p>
+                <p className="spread-credit absolute bottom-0 right-0 text-[0.6875rem] text-muted">
+                    {\array_map(self::photoCredit(...), \array_keys(self::PHOTO_CREDITS), self::PHOTO_CREDITS)}
+                </p>
+            </div>
+        );
+    }
+
+    /**
+     * @param array{name: string, url: string} $credit
+     */
+    private static function photoCredit(string $photo, array $credit): Element
+    {
+        return (
+            <span data-for={$photo} className="bg-surface px-3 py-1">
+                Photo:{' '}
+                <a href={$credit['url']} className="transition-colors hover:text-ink" target="_blank" rel="noopener noreferrer">{$credit['name']}</a>
+                {' / '}
+                <a href="https://unsplash.com/license" className="transition-colors hover:text-ink" target="_blank" rel="noopener noreferrer">Unsplash License</a>
+            </span>
         );
     }
 

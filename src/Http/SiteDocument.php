@@ -190,10 +190,22 @@ final class SiteDocument implements DocumentInterface
         }
 
         // 本文より先に走らせないと初回描画が白く光るので、ここだけインライン。
+        //
+        // 見開きの写真を選ぶ data-photo も同じ理由でここ（後から付けると、
+        // 夏の写真が一瞬出てから差し替わる）。読者の時計の月から季節を決め、
+        // site.js が sessionStorage に置いた天気が 30 分以内で雨か雪なら
+        // そちらを優先する。data-weather は「天気はもう分かっている」の印で、
+        // 取りに行くのは site.js の仕事。
         $head[] = '<script>'
-            . '(function(){var s=null;try{s=localStorage.getItem("theme")}catch(e){}'
+            . '(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem("theme")}catch(e){}'
             . 'if(s==="dark"||(s===null&&window.matchMedia("(prefers-color-scheme: dark)").matches))'
-            . '{document.documentElement.classList.add("dark")}})();'
+            . '{d.classList.add("dark")}'
+            . 'var p=["winter","winter","spring","spring","spring","summer","summer","summer",'
+            . '"autumn","autumn","autumn","winter"][new Date().getMonth()];'
+            . 'try{var w=JSON.parse(sessionStorage.getItem("weather"));'
+            . 'if(w&&Date.now()-w.at<18e5){d.dataset.weather=w.kind;if(w.kind!=="clear"){p=w.kind}}}catch(e){}'
+            . 'd.dataset.photo=p'
+            . '})();'
             . '</script>';
 
         $headHtml = \implode("\n    ", $head);
