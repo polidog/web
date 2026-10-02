@@ -169,6 +169,79 @@
   }
 
   /*
+   * 公開側の見開き（lg 以上）。左ページが本文、右ページが裁ち落としの
+   * 写真。写真は画面に固定で、スクロールするのは左ページだけ。
+   *
+   * `.spread-photo` を置くのは公開側の外殻（layout.psx）で、それを持つ
+   * ページだけ body の右を空ける（管理画面とエラーページは見開きに
+   * ならない）。空ける幅は「44rem の柱が必ず収まる」ほうに倒してあるので、
+   * 本文の measure はどの画面幅でも変わらない。
+   *
+   * 写真が <img> ではなく背景なのは、狭い画面に 1 バイトも配らないため
+   * （media query の外では url() が解決されない）。`screen` 付きなので
+   * 印刷にも出ない。`:has()` が無いブラウザでは写真ごと出ない。
+   *
+   * 写真は季節で 4 枚、雨と雪のときだけ専用の 1 枚に替わる。ページは
+   * エッジに最長 1 週間載るので、サーバでは選べない——<html> の
+   * `data-photo` を head のインラインスクリプト（SiteDocument）が読者の
+   * 時計の月から付け、site.js が東京のいまの天気で上書きする。
+   * 付かなければ（JS が無ければ）夏の 1 枚が出る。
+   *
+   * 撮影者のクレジットも同じ属性で切り替える。外殻が全員ぶん出力して
+   * いて、`data-for` が `data-photo` と合う 1 つだけを見せる（出どころの
+   * 一覧は layout.psx の PHOTO_CREDITS）。
+   */
+  .spread-photo,
+  .spread-credit span {
+    display: none;
+  }
+
+  @media screen and (min-width: 1024px) {
+    @supports selector(:has(*)) {
+      body:has(.spread-photo) {
+        --spread-photo: min(40vw, 100vw - 44rem);
+        padding-right: var(--spread-photo);
+      }
+
+      .spread-photo {
+        display: block;
+        position: fixed;
+        inset: 0 0 0 auto;
+        width: var(--spread-photo);
+        background: rgb(var(--color-raised)) url('/assets/spread/summer.webp') center / cover;
+      }
+
+      [data-photo='spring'] .spread-photo {
+        background-image: url('/assets/spread/spring.webp');
+      }
+
+      [data-photo='autumn'] .spread-photo {
+        background-image: url('/assets/spread/autumn.webp');
+      }
+
+      [data-photo='winter'] .spread-photo {
+        background-image: url('/assets/spread/winter.webp');
+      }
+
+      [data-photo='rain'] .spread-photo {
+        background-image: url('/assets/spread/rain.webp');
+      }
+
+      [data-photo='snow'] .spread-photo {
+        background-image: url('/assets/spread/snow.webp');
+      }
+
+      [data-photo='spring'] .spread-credit [data-for='spring'],
+      [data-photo='autumn'] .spread-credit [data-for='autumn'],
+      [data-photo='winter'] .spread-credit [data-for='winter'],
+      [data-photo='rain'] .spread-credit [data-for='rain'],
+      [data-photo='snow'] .spread-credit [data-for='snow'] {
+        display: block;
+      }
+    }
+  }
+
+  /*
    * 管理画面のエディタ。本文とプレビューを横に並べるかどうかは、フォームの
    * `data-preview` を admin.js が書き換えて切り替える。
    *
