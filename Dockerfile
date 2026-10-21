@@ -25,7 +25,10 @@ COPY bin/build-hljs.sh ./bin/
 RUN bash bin/build-hljs.sh
 
 # --- アプリ ---------------------------------------------------------------
-FROM dunglas/frankenphp:php8.5
+# パッチバージョンまで固定する。`php8.5` のような浮動タグだと、ビルダーに
+# 古いイメージがキャッシュされていれば修正前の PHP のままビルドされても
+# 気づけない。php2shell（CVE-2026-109618 / CVE-2026-109619）の修正は 8.5.12。
+FROM dunglas/frankenphp:1.13.2-php8.5.12
 
 # curl と pdo_sqlite はベースイメージで有効。zip は composer の dist 展開用。
 # opcache は本番のリクエストコストを決めるので明示的に入れる。
