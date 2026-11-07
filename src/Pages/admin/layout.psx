@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Layouts;
 
 use App\Http\SiteDocument;
+use App\Support\AssetUrl;
 use App\Support\SiteConfig;
 use Polidog\Relayer\Auth\AuthenticatorInterface;
 use Polidog\Relayer\Http\Request;
@@ -48,7 +49,12 @@ final class AdminLayout extends LayoutComponent
 
     public function render(): Element
     {
-        $this->document->addHeadHtml('<script src="/assets/admin.js" defer></script>');
+        // 中身のハッシュを付ける。admin.js はフォームのフィールド名などサーバとの
+        // 取り決めを持つので、デプロイ後にブラウザの古いキャッシュが動くと壊れる。
+        $this->document->addHeadHtml(\sprintf(
+            '<script src="%s" defer></script>',
+            \htmlspecialchars(AssetUrl::versioned('/assets/admin.js'), \ENT_QUOTES),
+        ));
         // スライドのプレビュー用。公開側の /slides/ と同じ CSS を読む。
         $this->document->addHeadHtml('<link rel="stylesheet" href="/assets/marp.css">');
 

@@ -105,16 +105,23 @@ final class HtmlToElement
     /**
      * Rosanna の Renderer が受け付ける属性名かどうか。
      *
-     * Renderer は `on*`（インラインのイベントハンドラ）と、HTML の属性名と
-     * して不正な名前を見ると**例外を投げる**（rosanna の
-     * `assertValidAttributeName()`）。記事本文 1 本のせいでページごと 500 に
-     * なるので、ここで黙って落とす。`/2008/12/29/firefox/` の `onclick` が
-     * これに当たった。`<script>` を落とすのと同じく、記事から JS を
-     * 走らせる理由はこのサイトに無い。
+     * Renderer は次の属性を見ると**例外を投げる**。記事本文 1 本のせいで
+     * ページごと 500 になるので、ここで黙って落とす。
+     *
+     * - `on*`（インラインのイベントハンドラ）と、HTML の属性名として不正な
+     *   名前（rosanna の `assertValidAttributeName()`）。
+     *   `/2008/12/29/firefox/` の `onclick` がこれに当たった。
+     * - 値のある `srcdoc`（同一オリジンで HTML として描画されるため、
+     *   rosanna の `renderAttributes()` が拒む）。値が空なら通るが、
+     *   残す意味も無いのでまとめて落とす。
+     * - `wire:*`（状態層 rosanna-state 用。rosanna の Renderer と Relayer の
+     *   `FormActionRenderExtension` の両方が拒む）。
+     *
+     * `<script>` を落とすのと同じく、記事から JS を走らせる理由はこのサイトに無い。
      */
     private static function renderableAttribute(string $name): bool
     {
         return 1 === \preg_match('/^[A-Za-z_:][A-Za-z0-9:_.\-]*$/D', $name)
-            && 1 !== \preg_match('/^on[a-z]/i', $name);
+            && 1 !== \preg_match('/^(on[a-z]|wire:|srcdoc$)/i', $name);
     }
 }
