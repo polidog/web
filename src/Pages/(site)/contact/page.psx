@@ -6,8 +6,8 @@ use App\Http\SiteDocument;
 use App\Service\PageMeta;
 use App\Support\PageCache;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * お問い合わせ（`/contact/`）。フォームは inqbox の埋め込み。

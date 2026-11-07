@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "009ace4b5b8fc12df94887e365c9aa9d",
+    "content-hash": "3afe3dce1d9a394dcb32f5c8b564d4b8",
     "packages": [
         {
             "name": "dflydev/dot-access-data",
@@ -656,16 +656,16 @@
         },
         {
             "name": "polidog/relayer",
-            "version": "v0.28.0",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/polidog/relayer.git",
-                "reference": "859e311e368e00356a68427775ae12c856a27c81"
+                "reference": "8f74401543cb58954f7b010b60ca1ca3cb80ff78"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/polidog/relayer/zipball/859e311e368e00356a68427775ae12c856a27c81",
-                "reference": "859e311e368e00356a68427775ae12c856a27c81",
+                "url": "https://api.github.com/repos/polidog/relayer/zipball/8f74401543cb58954f7b010b60ca1ca3cb80ff78",
+                "reference": "8f74401543cb58954f7b010b60ca1ca3cb80ff78",
                 "shasum": ""
             },
             "require": {
@@ -674,7 +674,8 @@
                 "firebase/php-jwt": "^7.0",
                 "monolog/monolog": "^3.0",
                 "php": ">=8.5",
-                "polidog/use-php": "^0.8.0",
+                "polidog/rosanna": "^1.0",
+                "polidog/rosanna-defer": "^1.0",
                 "psr/container": "^2.0",
                 "symfony/config": "^7.1",
                 "symfony/dependency-injection": "^7.1",
@@ -708,12 +709,150 @@
                     "email": "polidogs@gmail.com"
                 }
             ],
-            "description": "Relayer — file-based router + Symfony DependencyInjection + dotenv on top of polidog/use-php.",
+            "description": "Relayer — file-based router + Symfony DependencyInjection + dotenv on top of polidog/rosanna and polidog/rosanna-defer.",
             "support": {
                 "issues": "https://github.com/polidog/relayer/issues",
-                "source": "https://github.com/polidog/relayer/tree/v0.28.0"
+                "source": "https://github.com/polidog/relayer/tree/v1.1.0"
             },
-            "time": "2026-08-22T14:32:15+00:00"
+            "time": "2026-11-04T13:23:02+00:00"
+        },
+        {
+            "name": "polidog/rosanna",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/polidog/rosanna.git",
+                "reference": "1bf151973a7795f462d1285d0d39bf48cb89cf54"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/polidog/rosanna/zipball/1bf151973a7795f462d1285d0d39bf48cb89cf54",
+                "reference": "1bf151973a7795f462d1285d0d39bf48cb89cf54",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "nikic/php-parser": "^5.7",
+                "php": ">=8.5"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.93",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^11.0",
+                "vimeo/psalm": "^6.14"
+            },
+            "bin": [
+                "bin/rosanna"
+            ],
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/Html/Elements.php",
+                    "src-functions/Runtime/attributes.php",
+                    "src-functions/Runtime/elements.php",
+                    "src-functions/Runtime/text.php",
+                    "src-functions/Runtime/urls.php",
+                    "src-functions/Runtime/files.php",
+                    "src-functions/Runtime/traces.php",
+                    "src-functions/Psx/edits.php",
+                    "src-functions/Psx/lowering.php",
+                    "src-functions/Psx/types.php",
+                    "src-functions/Psx/tokens.php",
+                    "src-functions/Psx/literals.php",
+                    "src-functions/Psx/components.php",
+                    "src-functions/Psx/syntax.php",
+                    "src-functions/Psx/compile.php"
+                ],
+                "psr-4": {
+                    "Polidog\\Rosanna\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "polidog",
+                    "email": "polidogs@gmail.com"
+                }
+            ],
+            "description": "Server-side PHP components in the shape of React: H, Element, Renderer and the PSX compiler",
+            "support": {
+                "issues": "https://github.com/polidog/rosanna/issues",
+                "source": "https://github.com/polidog/rosanna/tree/v1.0.0"
+            },
+            "time": "2026-11-04T13:13:27+00:00"
+        },
+        {
+            "name": "polidog/rosanna-defer",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/polidog/rosanna-defer.git",
+                "reference": "25c9b97a654afff9725054610180b4379451353f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/polidog/rosanna-defer/zipball/25c9b97a654afff9725054610180b4379451353f",
+                "reference": "25c9b97a654afff9725054610180b4379451353f",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.5",
+                "polidog/rosanna": "^1.0"
+            },
+            "require-dev": {
+                "composer/composer": "^2.8",
+                "friendsofphp/php-cs-fixer": "^3.93",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^11.0",
+                "vimeo/psalm": "^6.14"
+            },
+            "bin": [
+                "bin/rosanna-defer"
+            ],
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/functions.php",
+                    "src-functions/text.php",
+                    "src-functions/urls.php",
+                    "src-functions/requests.php",
+                    "src-functions/cache.php",
+                    "src-functions/scripts.php",
+                    "src-functions/manifest.php"
+                ],
+                "psr-4": {
+                    "Polidog\\Rosanna\\Defer\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "polidog",
+                    "email": "polidogs@gmail.com"
+                }
+            ],
+            "description": "Deferred fragments for Rosanna: placeholders, a GET endpoint, client caching and rosanna-defer.js, without sessions or state",
+            "support": {
+                "issues": "https://github.com/polidog/rosanna-defer/issues",
+                "source": "https://github.com/polidog/rosanna-defer/tree/v1.0.0"
+            },
+            "time": "2026-11-04T13:15:19+00:00"
         },
         {
             "name": "polidog/tehilim",
@@ -764,60 +903,6 @@
                 "source": "https://github.com/polidog/tehilim/tree/v0.1.0"
             },
             "time": "2026-05-22T10:10:42+00:00"
-        },
-        {
-            "name": "polidog/use-php",
-            "version": "v0.8.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/polidog/usePHP.git",
-                "reference": "fa9206c930cb2b28af5894ba9309a5aa08ef38a5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/polidog/usePHP/zipball/fa9206c930cb2b28af5894ba9309a5aa08ef38a5",
-                "reference": "fa9206c930cb2b28af5894ba9309a5aa08ef38a5",
-                "shasum": ""
-            },
-            "require": {
-                "nikic/php-parser": "^5.7",
-                "php": ">=8.5"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.93",
-                "phpstan/phpstan": "^2.1",
-                "phpunit/phpunit": "^11.0",
-                "vimeo/psalm": "^6.14"
-            },
-            "bin": [
-                "bin/usephp"
-            ],
-            "type": "library",
-            "autoload": {
-                "files": [
-                    "src/Html/Elements.php",
-                    "src/Runtime/Hooks.php"
-                ],
-                "psr-4": {
-                    "Polidog\\UsePhp\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "polidog",
-                    "email": "polidogs@gmail.com"
-                }
-            ],
-            "description": "React Hooks-like PHP components with server-side state management",
-            "support": {
-                "issues": "https://github.com/polidog/usePHP/issues",
-                "source": "https://github.com/polidog/usePHP/tree/v0.8.0"
-            },
-            "time": "2026-08-20T13:20:56+00:00"
         },
         {
             "name": "psr/container",

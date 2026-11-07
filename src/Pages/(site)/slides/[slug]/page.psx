@@ -10,8 +10,8 @@ use App\Support\PageCache;
 use App\Support\SiteConfig;
 use App\View\Components;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * スライドの閲覧ページ（`/slides/<slug>/`）。
@@ -21,7 +21,7 @@ use Polidog\UsePhp\Runtime\Element;
  * 幅に合わせた縮尺はブラウザがやる —— JS が要るのは全画面のプレゼン
  * モードだけ（/assets/slides.js）。
  *
- * デッキの CSS（front matter の `style:`）は本文に置けない。usePHP の
+ * デッキの CSS（front matter の `style:`）は本文に置けない。Rosanna の
  * Renderer は文字列を必ずエスケープし、HtmlToElement は `<style>` を
  * 落とすので、`SiteDocument::addHeadHtml()` で `<head>` に入れる。
  * セレクタは保存時に `.marp` で括ってあるので、レイアウトには漏れない。

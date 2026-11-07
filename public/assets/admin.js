@@ -1,7 +1,7 @@
 /*
  * 管理画面のクライアントスクリプト。
  *
- * 公開側と同じ理由でインライン <script> が書けない（usePHP の Renderer は
+ * 公開側と同じ理由でインライン <script> が書けない（Rosanna の Renderer は
  * children の文字列を必ずエスケープする）ので、JS はこのファイルに寄せ、
  * サーバからの値は data 属性で受け取る。読み込むのは AdminLayout だけ
  * （公開側のページには 1 バイトも足さない）。
@@ -444,7 +444,7 @@
      * 明示的に検証している）。
      */
     function uploadFiles(files) {
-      var token = form.querySelector('input[name="_usephp_csrf"]');
+      var token = form.querySelector('input[name="_rosanna_csrf"]');
       var images = [];
 
       for (var i = 0; i < files.length; i++) {
@@ -466,7 +466,7 @@
       var pending = images.map(function (file) {
         var data = new FormData();
         data.append('file', file);
-        data.append('_usephp_csrf', token.value);
+        data.append('_rosanna_csrf', token.value);
 
         return window
           .fetch(form.dataset.uploadUrl, {

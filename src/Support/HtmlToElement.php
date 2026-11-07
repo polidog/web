@@ -8,12 +8,12 @@ use Dom\Element as DomElement;
 use Dom\HTMLDocument;
 use Dom\Node;
 use Dom\Text;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
- * レンダリング済みの記事 HTML を usePHP の Element ツリーに変換する。
+ * レンダリング済みの記事 HTML を Rosanna の Element ツリーに変換する。
  *
- * **なぜ必要か**: usePHP の Renderer は children に来た文字列を必ず
+ * **なぜ必要か**: Rosanna の Renderer は children に来た文字列を必ず
  * `htmlspecialchars` する（Runtime/Renderer.php の renderChildren）。
  * これは設計であって設定ではなく、生 HTML を差し込む口が無い。
  * CMS は「Markdown から起こした HTML」を本文として出すので、
@@ -91,11 +91,30 @@ final class HtmlToElement
 
         $props = [];
         foreach ($node->attributes as $attribute) {
+            if (!self::renderableAttribute($attribute->name)) {
+                continue;
+            }
             // 値のない属性（allowfullscreen など）は DOM 上では空文字。
             // Renderer は空文字でも `attr=""` を出すので、HTML としては同義。
             $props[$attribute->name] = $attribute->value;
         }
 
         return new Element($tag, $props, self::children($node));
+    }
+
+    /**
+     * Rosanna の Renderer が受け付ける属性名かどうか。
+     *
+     * Renderer は `on*`（インラインのイベントハンドラ）と、HTML の属性名と
+     * して不正な名前を見ると**例外を投げる**（rosanna の
+     * `assertValidAttributeName()`）。記事本文 1 本のせいでページごと 500 に
+     * なるので、ここで黙って落とす。`/2008/12/29/firefox/` の `onclick` が
+     * これに当たった。`<script>` を落とすのと同じく、記事から JS を
+     * 走らせる理由はこのサイトに無い。
+     */
+    private static function renderableAttribute(string $name): bool
+    {
+        return 1 === \preg_match('/^[A-Za-z_:][A-Za-z0-9:_.\-]*$/D', $name)
+            && 1 !== \preg_match('/^on[a-z]/i', $name);
     }
 }

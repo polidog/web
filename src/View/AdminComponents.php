@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\View;
 
 use App\Support\Paginated;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 管理画面の部品。記事とページで同じエディタを使う（違いは kind と
@@ -32,7 +32,7 @@ use Polidog\UsePhp\Runtime\Element;
  * ## エディタの構造
  *
  * `editor()` が返す `<form>` は data 属性でだけ JS と繋がっている
- * （`public/assets/admin.js`）。usePHP の Renderer は children の文字列を
+ * （`public/assets/admin.js`）。Rosanna の Renderer は children の文字列を
  * 必ずエスケープするのでページにインライン `<script>` を書けず、値の
  * 受け渡しは data 属性 1 本になる。プレビューの開閉も JS からクラスを
  * 足すのではなく `data-preview` の書き換えでやる —— Tailwind は

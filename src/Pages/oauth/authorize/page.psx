@@ -12,8 +12,8 @@ use Polidog\Relayer\Auth\AuthenticatorInterface;
 use Polidog\Relayer\Auth\SessionStorage;
 use Polidog\Relayer\Http\Request;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 同意画面。Claude を polidog.jp に繋ぐとき、ブラウザがここに来る。
@@ -102,9 +102,7 @@ return function (
             'resource' => (string) ($request->query('resource') ?? ''),
         ];
 
-        // 子は「配列 1 つ」に均してから渡す。usePHP が平坦化するのは
-        // 子が配列 1 つだけのときで、配列と要素を並べるとネストした配列が
-        // そのままレンダラに届いて TypeError になる。
+        // hidden の並びとボタンを 1 本の配列にしてから渡す。
         $formChildren = \array_values(\array_map(
             static fn (string $name): Element => H::input(
                 type: 'hidden',

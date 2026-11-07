@@ -8,8 +8,8 @@ use App\Support\HugoSlug;
 use App\Support\PageCache;
 use App\View\Components;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * カテゴリ一覧の 2 ページ目以降。tech が 669 件、diary が 562 件あるので必須。

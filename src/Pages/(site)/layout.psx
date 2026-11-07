@@ -6,8 +6,8 @@ namespace App\Layouts;
 
 use App\Support\SiteConfig;
 use Polidog\Relayer\Router\Layout\LayoutComponent;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 公開側の外殻。
@@ -147,9 +147,9 @@ final class RootLayout extends LayoutComponent
     }
 
     /**
-     * ナビの children は先に 1 本の配列に均しておく。usePHP が平坦化するのは
-     * 「子が配列 1 つだけ」のときで、配列と要素を並べるとネストした配列が
-     * そのまま渡り、レンダラが Element|string|null を期待して落ちる。
+     * ナビの children は 1 本の配列に組み立ててから渡す。Rosanna は入れ子の
+     * 配列も文書順に平坦化するので必須ではないが（usePHP の頃は落ちた）、
+     * 並びが 1 か所で読めるようにしておく。
      */
     private function desktopNav(): Element
     {
