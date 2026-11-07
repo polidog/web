@@ -10,8 +10,8 @@ use App\View\AdminComponents;
 use Polidog\Relayer\Auth\AuthenticatorInterface;
 use Polidog\Relayer\Auth\SessionStorage;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * ログイン画面。メールアドレスとパスワードの 1 組だけを受ける。

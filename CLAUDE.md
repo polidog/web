@@ -39,10 +39,10 @@ docker compose up --build            # → http://localhost:8080（本番と同�
 
 ```bash
 vendor/bin/relayer routes            # src/Pages 配下で検出されたルート一覧 — これが正
-vendor/bin/relayer routes:compile    # ルートマップの事前コンパイル（デプロイ時）
-vendor/bin/relayer container:compile # DI コンテナを PHP にダンプ（デプロイ時）
+vendor/bin/relayer compile           # .psx・ルートマップ・DI コンテナを一括で事前コンパイル（デプロイ時）
+vendor/bin/relayer routes:compile    # ルートマップの事前コンパイルだけ
+vendor/bin/relayer container:compile # DI コンテナを PHP にダンプするだけ
 vendor/bin/relayer profiler:clear    # var/cache/profiler を削除
-vendor/bin/usephp compile src/Pages  # .psx → コンパイル済み PHP（デプロイ時）
 vendor/bin/tehilim generate          # スキーマ → 型付きクライアント（src/Tehilim）
 vendor/bin/tehilim migrate dev --name <slug>   # スキーマ差分からマイグレーション作成
 vendor/bin/tehilim migrate deploy    # 未適用のマイグレーションを適用
@@ -77,10 +77,13 @@ PHP 8.5 は `mise.toml` で固定。実行イメージは FrankenPHP（`Dockerfi
   推測せず、`vendor/bin/relayer routes` で確認する。
   公開側は `(site)` ルートグループに入っている（グループは URL セグメントを
   増やさない）。これは管理画面 `/admin` と外殻レイアウトを分けるため。
-- **ビュー** は `.psx`（JSX 風構文の PHP）。`APP_ENV=dev` ではリクエストごとに、
-  本番では事前にコンパイルされる。共通部品は `src/View/` に素の PHP で置く
-  （`usephp compile` が見るのは `src/Pages/` だけなので、その外の `.psx` は
-  オートロードに乗らない）。
+- **ビュー** は `.psx`（JSX 風構文の PHP）。描画は Relayer 1.x の土台の
+  [Rosanna](https://github.com/polidog/rosanna)（`Polidog\Rosanna\Html\H` /
+  `Polidog\Rosanna\Runtime\Element`）。Relayer 0.x の usePHP（`Polidog\UsePhp\…`）
+  ではないので、古い記事やコードの書き方を持ち込まないこと。
+  `APP_ENV=dev` ではリクエストごとに、本番では事前にコンパイルされる。共通部品は `src/View/` に素の PHP で置く
+  （`relayer compile` が見るのは `src/Pages/` と `src/Components/` だけなので、
+  その外の `.psx` はオートロードに乗らない）。
 - **DB** は SQLite + [tehilim](https://github.com/polidog/tehilim)。
   スキーマは `tehilim/schema.tehilim`、生成物は `src/Tehilim/`（手で編集しない）。
 - **DI** は Symfony DependencyInjection。`config/services.yaml` が正。
@@ -193,9 +196,10 @@ DI コンテナ・ルートマップの読み込みが毎回走らない。応�
 
 - **サービスにリクエスト由来の状態を持たせない。** 持つなら
   `public/index.php` の `$handle` の先頭で消す。いま消しているのは
-  `SiteDocument::reset()`（title / og:image / `addHeadHtml()` の蓄積）と
-  usePHP の `ComponentState` / `StorageFactory`。`JsonRequestBody` が
-  本文をメモ化しないのも同じ理由（メモ化すると 2 リクエスト目以降が
+  `SiteDocument::reset()`（title / og:image / `addHeadHtml()` の蓄積）と、
+  `Relayer::endRequest()` が回す Rosanna の `RequestLifecycle`。自前の
+  サービスに後始末が要るなら `RequestLifecycle::onReset()` に登録する。
+  `JsonRequestBody` が本文をメモ化しないのも同じ理由（メモ化すると 2 リクエスト目以降が
   ずっと最初の本文を読む）。
 - **`frankenphp_handle_request()` を `function_exists` で分岐しない。**
   FrankenPHP なら classic モードでも関数は存在し、呼ぶと例外になる。
@@ -242,25 +246,18 @@ Hugo 時代の URL がそのまま生きている。特に効いてくる事実:
 
 ### 生 HTML を出す唯一の方法
 
-usePHP の Renderer は children の文字列を**必ず**エスケープする。設計であって
+Rosanna の Renderer は children の文字列を**必ず**エスケープする。設計であって
 設定ではないので、記事本文（レンダリング済み HTML）をそのまま出す口が無い。
 `App\Support\HtmlToElement` が HTML5 パーサ（PHP 8.4+ の `Dom\HTMLDocument`）で
 Element ツリーに組み直している。同じ理由で**ページ内にインライン `<script>` は
 書けない**——JS は `public/assets/site.js` に置き、値は data 属性で渡す。
 
-### 子に「配列と要素」を混ぜない
-
-usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
-
-```php
-<ul>{\array_map(...)}</ul>            // OK
-<nav>{\array_map(...)}<a>…</a></nav>  // 落ちる
-```
-
-後者はネストした配列がそのままレンダラに渡り、`Element|string|null` を期待する
-`FormActionTransformer` が TypeError を投げる（500 になるがスタックトレースは
-ページ本文に出るので原因は見えにくい）。並べたいときは PHP 側で 1 本の配列に
-均してから渡すこと（`RootLayout::desktopNav()` がその形）。
+Rosanna の Renderer は **`on*` 属性（インラインのイベントハンドラ）と不正な
+属性名を見ると例外を投げる**（ページごと 500）。記事本文は 20 年ぶんの
+手書き HTML なので、`HtmlToElement` がこれらを黙って落としている
+（`/2008/12/29/firefox/` の `onclick` で実際に落ちた）。ページ側でも
+`onClick` などは書けない —— 動きは `public/assets/*.js` に置く。
+`style` は文字列で渡す（配列は捨てられる）。
 
 ### 見た目の決まりごと
 
@@ -376,7 +373,7 @@ usePHP が平坦化するのは **子が配列 1 つだけ**のとき。
 - **CSS は `Post.html` の先頭に `<style data-marp-style>` として抱き合わせて
   保存する**（`MarpDeck::storable()` / `splitStored()`）。列を増やさない
   ための小技で、表示側は分けてから使う —— 本文に `<style>` を置いても
-  usePHP がエスケープし `HtmlToElement` が落とすので、CSS は
+  Rosanna がエスケープし `HtmlToElement` が落とすので、CSS は
   `SiteDocument::addHeadHtml()` で `<head>` に入れる。抜粋は front matter の
   `description`、無ければ各ページの文字を繋いだもの（CSS は混ぜない）。
 - **全画面のプレゼンモードは `public/assets/slides.js`**。状態は
@@ -431,7 +428,7 @@ Claude Chat の「カスタムコネクタ」に `https://polidog.jp/mcp` を入
 - **平文の秘密は保存しない。** 認可コードもトークンも SHA-256 だけを
   DB に入れる（DB ファイルは記事と同じ volume に載る）。
 - **同意画面は hidden で値を持ち回り、POST 後にもう一度検証する。**
-  usePHP の form action はページのパスだけでクエリを保持しないため。
+  Relayer の form action はページのパスだけでクエリを保持しないため。
   改竄されても検証を通らないので、hidden を信用したことにはならない。
 - **検証に失敗した認可リクエストではリダイレクトしない。** その時点の
   `redirect_uri` はまだ信用できず、飛ばすとこの認可サーバー自体が
@@ -484,8 +481,9 @@ Claude Chat の「カスタムコネクタ」に `https://polidog.jp/mcp` を入
 - **`route.php` には CSRF 検証が入らない。** 自動で守られるのは
   `$ctx->action()` のフォームだけ。副作用のある API を足すなら、
   `CsrfToken::validate()` を自分で呼ぶこと（`admin/media/upload/route.php`
-  がその形で、トークンはエディタのフォームに埋まっているものを JS が
-  そのまま送っている）。
+  がその形で、トークンはエディタのフォームに埋まっている `_rosanna_csrf`
+  を JS がそのまま送っている）。フィールド名は Relayer 0.x の
+  `_usephp_csrf` から変わっているので、古い名前で読むと必ず 419 になる。
 - **`PageContext::metadata()` は使わない。** 既定の `HtmlDocument` にしか届かず、
   このアプリは canonical のために `SiteDocument` に差し替えている。
   head の設定は `App\Service\PageMeta` を通す。

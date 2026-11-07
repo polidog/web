@@ -7,8 +7,8 @@ use App\Service\PostRepository;
 use App\Support\PageCache;
 use App\View\Components;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 一覧の 2 ページ目以降。Hugo の paginator が `/page/2/` を吐いていたので

@@ -7,8 +7,8 @@ use App\Service\PostRepository;
 use App\Support\HtmlToElement;
 use App\Support\PageCache;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 管理画面から自由に作れる 1 階層のページ（`/about` など）。

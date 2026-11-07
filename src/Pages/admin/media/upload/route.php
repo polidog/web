@@ -32,7 +32,7 @@ return [
             return Response::json(['error' => 'unauthorized'], 401);
         }
 
-        if (!CsrfToken::validate($request->post('_usephp_csrf') ?? '')) {
+        if (!CsrfToken::validate($request->post('_rosanna_csrf') ?? '')) {
             return Response::json(['error' => 'CSRF トークンが不正です。'], 419);
         }
 

@@ -16,7 +16,7 @@ directory is a **page** (`page.psx`/`page.php` + optional
 `layout.psx`) **or** an API endpoint (`route.php`) — never
 both. `[param]` directories are dynamic segments; the root
 `error.psx` renders any HTTP error (404/403/500…) raised via
-`$ctx->abort()` / `notFound()`.
+`$ctx->abort()` / `notFound()`, and uncaught exceptions as a 500.
 
 ## Pages
 

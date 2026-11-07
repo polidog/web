@@ -162,8 +162,7 @@ php bin/verify-urls.php --base=http://127.0.0.1:8000   # URL が壊れていな�
 fly volumes create polidog_data --region nrt --size 3
 fly secrets set ADMIN_EMAIL=you@example.com \
                 ADMIN_PASSWORD_HASH='$2y$12$...' \
-                CLOUDFLARE_ZONE_ID=... CLOUDFLARE_API_TOKEN=... \
-                USEPHP_SNAPSHOT_SECRET="$(openssl rand -hex 32)"
+                CLOUDFLARE_ZONE_ID=... CLOUDFLARE_API_TOKEN=...
 fly deploy
 fly scale count 1        # SQLite の書き手を 1 つに保つ
 ```

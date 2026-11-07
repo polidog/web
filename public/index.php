@@ -50,8 +50,8 @@ $handle = static function () use ($router, $document): void {
         }
         echo "500 Internal Server Error\n";
     } finally {
-        // フレームワークと usePHP が static に持つリクエスト由来の状態
-        // （コンポーネント状態・ストレージ・RenderContext・翻訳）を捨てる。
+        // フレームワークと Rosanna が static に持つリクエスト由来の状態
+        // （RequestLifecycle の後始末・PageContext・翻訳）を捨てる。
         // run() の finally でも大半は消えるが、exit 経路では finally が
         // 走らないので、ここでもう一度呼ぶ（冪等）。
         Relayer::endRequest();

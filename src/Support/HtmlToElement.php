@@ -8,12 +8,12 @@ use Dom\Element as DomElement;
 use Dom\HTMLDocument;
 use Dom\Node;
 use Dom\Text;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
- * レンダリング済みの記事 HTML を usePHP の Element ツリーに変換する。
+ * レンダリング済みの記事 HTML を Rosanna の Element ツリーに変換する。
  *
- * **なぜ必要か**: usePHP の Renderer は children に来た文字列を必ず
+ * **なぜ必要か**: Rosanna の Renderer は children に来た文字列を必ず
  * `htmlspecialchars` する（Runtime/Renderer.php の renderChildren）。
  * これは設計であって設定ではなく、生 HTML を差し込む口が無い。
  * CMS は「Markdown から起こした HTML」を本文として出すので、
@@ -91,11 +91,37 @@ final class HtmlToElement
 
         $props = [];
         foreach ($node->attributes as $attribute) {
+            if (!self::renderableAttribute($attribute->name)) {
+                continue;
+            }
             // 値のない属性（allowfullscreen など）は DOM 上では空文字。
             // Renderer は空文字でも `attr=""` を出すので、HTML としては同義。
             $props[$attribute->name] = $attribute->value;
         }
 
         return new Element($tag, $props, self::children($node));
+    }
+
+    /**
+     * Rosanna の Renderer が受け付ける属性名かどうか。
+     *
+     * Renderer は次の属性を見ると**例外を投げる**。記事本文 1 本のせいで
+     * ページごと 500 になるので、ここで黙って落とす。
+     *
+     * - `on*`（インラインのイベントハンドラ）と、HTML の属性名として不正な
+     *   名前（rosanna の `assertValidAttributeName()`）。
+     *   `/2008/12/29/firefox/` の `onclick` がこれに当たった。
+     * - 値のある `srcdoc`（同一オリジンで HTML として描画されるため、
+     *   rosanna の `renderAttributes()` が拒む）。値が空なら通るが、
+     *   残す意味も無いのでまとめて落とす。
+     * - `wire:*`（状態層 rosanna-state 用。rosanna の Renderer と Relayer の
+     *   `FormActionRenderExtension` の両方が拒む）。
+     *
+     * `<script>` を落とすのと同じく、記事から JS を走らせる理由はこのサイトに無い。
+     */
+    private static function renderableAttribute(string $name): bool
+    {
+        return 1 === \preg_match('/^[A-Za-z_:][A-Za-z0-9:_.\-]*$/D', $name)
+            && 1 !== \preg_match('/^(on[a-z]|wire:|srcdoc$)/i', $name);
     }
 }

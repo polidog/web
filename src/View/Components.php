@@ -7,14 +7,14 @@ namespace App\View;
 use App\Support\HtmlToElement;
 use App\Support\HugoSlug;
 use App\Support\SiteConfig;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 一覧・記事詳細で共用する小さな部品。
  *
- * `.psx` ではなく素の PHP で `H::` を直接呼んでいるのは、`usephp compile`
- * が見るのが `src/Pages/` だけで、その外に置いた `.psx` はオートロードに
+ * `.psx` ではなく素の PHP で `H::` を直接呼んでいるのは、`relayer compile`
+ * が見るのが `src/Pages/` と `src/Components/` だけで、その外に置いた `.psx` はオートロードに
  * 乗らないため。部品はこの数個しかないので、JSX が使えない不便より
  * 「置き場所が素直」を取る。
  *
@@ -366,7 +366,7 @@ final class Components
     /**
      * Disqus のマウント先。
      *
-     * スクリプトは埋め込まない — usePHP の Renderer は children の文字列を
+     * スクリプトは埋め込まない — Rosanna の Renderer は children の文字列を
      * 必ずエスケープするので、インライン JS を書いても壊れるため。
      * 設定は data 属性で渡し、/assets/site.js が読み取って Disqus を
      * 読み込む。`identifier` は Hugo が使っていた値（content からの相対

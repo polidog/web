@@ -15,7 +15,7 @@ namespace App\Support;
  *
  * 分けておく理由は 2 つ。`MarkdownRenderer::excerpt()` が `strip_tags`
  * なので、CSS を混ぜたまま渡すと抜粋にセレクタが流れ込む。もう 1 つは
- * 公開ページの都合で、usePHP の Renderer は文字列の子を必ずエスケープする
+ * 公開ページの都合で、Rosanna の Renderer は文字列の子を必ずエスケープする
  * うえ `HtmlToElement` は `<style>` を落とすため、CSS は本文ではなく
  * `SiteDocument::addHeadHtml()` から `<head>` に置くしかない。
  */

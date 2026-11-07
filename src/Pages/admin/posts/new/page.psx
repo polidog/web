@@ -8,8 +8,8 @@ use App\Service\PostWriter;
 use App\Support\PageCache;
 use App\View\AdminComponents;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * 記事の新規作成。保存すると PostWriter が Markdown をレンダリングし、

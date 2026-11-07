@@ -7,8 +7,8 @@ use App\Service\PostRepository;
 use App\Support\PageCache;
 use App\View\Components;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * `/blog/` — Hugo の section list ページ。

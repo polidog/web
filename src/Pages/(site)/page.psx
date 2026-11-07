@@ -8,8 +8,8 @@ use App\Support\PageCache;
 use App\Support\SiteConfig;
 use App\View\Components;
 use Polidog\Relayer\Router\Component\PageContext;
-use Polidog\UsePhp\Html\H;
-use Polidog\UsePhp\Runtime\Element;
+use Polidog\Rosanna\Html\H;
+use Polidog\Rosanna\Runtime\Element;
 
 /**
  * トップページ。Hugo の home.html 相当で、最新 25 件を出す。

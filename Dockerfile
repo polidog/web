@@ -39,7 +39,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 # 依存は別レイヤーに。アプリのコードを直しても再インストールされない。
-# --no-scripts なのは、post-install の usephp アセット公開がアプリの
+# --no-scripts なのは、post-install の rosanna-defer.js 公開がアプリの
 # ソースを必要とするため（次の install で実行される）。
 COPY composer.json composer.lock ./
 RUN composer install --no-interaction --prefer-dist --no-dev \
@@ -52,13 +52,11 @@ COPY --from=css /build/public/assets/hljs /app/public/assets/hljs
 RUN composer install --no-interaction --prefer-dist --no-dev \
     --classmap-authoritative
 
-# 3 つの事前コンパイル。APP_ENV を渡さない（= 本番扱い）ので、
+# 事前コンパイル（.psx・ルートマップ・DI コンテナ）。APP_ENV を渡さない（= 本番扱い）ので、
 # ランタイムはここで作った成果物を読むだけになる。
 # container:compile は env をビルド時に焼き込むが、config/services.yaml は
 # secret をすべて %env(...)% 経由で参照しているのでランタイム解決される。
-RUN vendor/bin/usephp compile src/Pages \
-    && vendor/bin/relayer routes:compile \
-    && vendor/bin/relayer container:compile
+RUN vendor/bin/relayer compile
 
 # php.ini は conf.d の最後に読ませて上書きする。Composer のビルドが
 # 自前のメモリ上限で走れるよう、インストール後に置く。
